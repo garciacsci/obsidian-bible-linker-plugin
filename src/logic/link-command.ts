@@ -77,9 +77,11 @@ async function getLinksForVerses(
 	let res = "";
 	const beginning = linkType === LinkType.Embedded ? "!" : "";
 	const ending = linkType === LinkType.Invisible ? "|" : "";
+
+  let formattedInput = userInput.charAt(0).toUpperCase() + userInput.slice(1).toLowerCase();
 	
 	if (linkType === LinkType.Invisible) {
-		res += `${beginning}[[${bookAndChapter}${settings.linkSeparator}${settings.versePrefix}${beginVerse}${ending}${userInput}]]`;
+		res += `${beginning}[[${bookAndChapter}${settings.linkSeparator}${settings.versePrefix}${beginVerse}${ending}${formattedInput}]]`;
 	} else {
 		res += `${beginning}[[${bookAndChapter}${settings.linkSeparator}${settings.versePrefix}${beginVerse}${ending}]]`;
 	}
