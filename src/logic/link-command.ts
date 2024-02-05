@@ -2,6 +2,7 @@ import { App, Notice } from "obsidian";
 import { LinkType } from "../modals/link-verse-modal";
 import { PluginSettings } from "../main";
 import { multipleChapters } from "../utils/regexes";
+import expandBibleBookName from "../utils/expandedBookName"
 import {
 	capitalize,
 	getFileByFilename,
@@ -78,7 +79,7 @@ async function getLinksForVerses(
 	const beginning = linkType === LinkType.Embedded ? "!" : "";
 	const ending = linkType === LinkType.Invisible ? "|" : "";
 
-  let formattedInput = userInput.charAt(0).toUpperCase() + userInput.slice(1).toLowerCase();
+  let formattedInput = expandBibleBookName(userInput);
 	
 	if (linkType === LinkType.Invisible) {
 		res += `${beginning}[[${bookAndChapter}${settings.linkSeparator}${settings.versePrefix}${beginVerse}${ending}${formattedInput}]]`;
