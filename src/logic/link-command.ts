@@ -77,7 +77,14 @@ async function getLinksForVerses(
 	let res = "";
 	const beginning = linkType === LinkType.Embedded ? "!" : "";
 	const ending = linkType === LinkType.Invisible ? "|" : "";
-	for (let i = beginVerse; i <= endVerse; i++) {
+	
+	if (linkType === LinkType.Invisible) {
+		res += `${beginning}[[${bookAndChapter}${settings.linkSeparator}${settings.versePrefix}${i}${ending}${userInput}]]`;
+	} else {
+		res += `${beginning}[[${bookAndChapter}${settings.linkSeparator}${settings.versePrefix}${i}${ending}]]`;
+	}
+	
+	for (let i = beginVerse+1; i <= endVerse; i++) {
 		res += `${beginning}[[${bookAndChapter}${settings.linkSeparator}${settings.versePrefix}${i}${ending}]]`;
 		if (useNewLine) {
 			res += "\n";
