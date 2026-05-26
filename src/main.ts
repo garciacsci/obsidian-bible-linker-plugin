@@ -120,9 +120,16 @@ const DEFAULT_SETTINGS: Partial<PluginSettings> = {
 };
 
 
-function replaceRangeAndMoveCursor(str: string, editor: Editor) {
-	editor.replaceRange(str, editor.getCursor());
-	let offset = editor.posToOffset(editor.getCursor())
+function replaceSelectionOrInsertAtCursor(str: string, editor: Editor) {
+	// Capture the insertion point before the edit: start of the selection if
+	// there is one, otherwise the current cursor position.
+	const insertionPoint = editor.getCursor("from");
+	// Replace the current selection with str (or insert at cursor if nothing
+	// is selected). This deletes any selected text first.
+	editor.replaceSelection(str);
+	// Explicitly move the cursor to the end of the inserted text using offsets
+	// (preserves the original replaceRangeAndMoveCursor behavior).
+	let offset = editor.posToOffset(insertionPoint);
 	offset += str.length;
 	editor.setCursor(editor.offsetToPos(offset));
 }
@@ -134,8 +141,10 @@ export default class BibleLinkerPlugin extends Plugin {
     openCopyModal = () => {
 		const editor = this.app.workspace.activeEditor?.editor
         if (editor) {
+            const prefill = editor.getSelection();
             new CopyVerseModal(this.app, this.settings,
-                (str) => replaceRangeAndMoveCursor(str, editor)
+                (str) => replaceSelectionOrInsertAtCursor(str, editor),
+                prefill
 			).open();
         }
     }
@@ -144,8 +153,10 @@ export default class BibleLinkerPlugin extends Plugin {
     openObsidianLinkModal = () => {
 		const editor = this.app.workspace.activeEditor?.editor
         if (editor) {
+            const prefill = editor.getSelection();
             new LinkVerseModal(this.app, this.settings,
-                (str) => replaceRangeAndMoveCursor(str, editor)
+                (str) => replaceSelectionOrInsertAtCursor(str, editor),
+                prefill
 			).open();
         }
     }

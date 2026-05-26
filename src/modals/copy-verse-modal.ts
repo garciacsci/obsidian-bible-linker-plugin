@@ -66,11 +66,13 @@ export default class CopyVerseModal extends Modal {
 	constructor(
 		app: App,
 		settings: PluginSettings,
-		onSubmit: (result: string) => void
+		onSubmit: (result: string) => void,
+		prefill = ""
 	) {
 		super(app);
 		this.onSubmit = onSubmit;
 		this.pluginSettings = settings;
+		this.userInput = prefill;
 	}
 
 	onOpen() {
@@ -91,14 +93,16 @@ export default class CopyVerseModal extends Modal {
 		contentEl.createEl("h3", { text: "Copy verse by bible reference" });
 
 		// Add Textbox for reference
-		new Setting(contentEl).setName("Insert reference").addText((text) =>
+		new Setting(contentEl).setName("Insert reference").addText((text) => {
 			text
+				.setValue(this.userInput ?? "")
 				.onChange((value) => {
 					this.userInput = value;
 					refreshPreview();
-				})
-				.inputEl.focus()
-		); // Sets focus to input field
+				});
+			text.inputEl.focus();
+			text.inputEl.select();
+		}); // Sets focus to input field
 
 		// Add translation picker
 		if (
@@ -165,6 +169,11 @@ export default class CopyVerseModal extends Modal {
 				this.handleInput();
 			}
 		};
+
+		// If a prefill was provided, render the initial preview
+		if (this.userInput) {
+			refreshPreview();
+		}
 	}
 
 	onClose() {
