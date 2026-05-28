@@ -38,13 +38,15 @@ export default class LinkVerseModal extends Modal {
 	constructor(
 		app: App,
 		settings: PluginSettings,
-		onSubmit: (result: string) => void
+		onSubmit: (result: string) => void,
+		prefill = ""
 	) {
 		super(app);
 		this.onSubmit = onSubmit;
 		this.pluginSettings = settings;
 		this.linkType = this.pluginSettings.linkTypePreset;
 		this.useNewLine = this.pluginSettings.newLinePreset;
+		this.userInput = prefill;
 	}
 
 	onOpen() {
@@ -56,13 +58,15 @@ export default class LinkVerseModal extends Modal {
 		});
 
 		// Add Textbox for reference
-		new Setting(contentEl).setName("Insert reference").addText((text) =>
+		new Setting(contentEl).setName("Insert reference").addText((text) => {
 			text
+				.setValue(this.userInput ?? "")
 				.onChange((value) => {
 					this.userInput = value;
-				})
-				.inputEl.focus()
-		); // Sets focus to input field
+				});
+			text.inputEl.focus();
+			text.inputEl.select();
+		}); // Sets focus to input field
 
 		new Setting(contentEl).setName("Link type").addDropdown((dropdown) => {
 			dropdown.addOption(LinkType.Basic, LinkType.Basic);
