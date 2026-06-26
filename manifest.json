@@ -1,9 +1,10 @@
 {
-    "id": "obsidian-bible-linker",
-    "name": "Bible Linker",
+    "id": "robust-bible-linking",
+    "name": "Robust Bible Linking",
     "version": "1.5.17",
     "minAppVersion": "1.0.0",
     "description": "Link multiple bible verses easily",
-    "author": "Jakub Kuchejda",
+    "author": "garciacsci (fork of Jakub Kuchejda's Bible Linker)",
+    "authorUrl": "https://github.com/garciacsci",
     "isDesktopOnly": false
 }
