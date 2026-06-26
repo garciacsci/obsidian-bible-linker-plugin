@@ -1,5 +1,18 @@
-# Obsidian Bible Linker
+# Robust Bible Linking
+
+A personal fork of [Bible Linker](https://github.com/kuchejak/obsidian-bible-linker-plugin) by Jakub Kuchejda, customized and shared with friends.
+
 Plugin for easier linking of multiple bible verses in Obsdian.md note taking app.
+
+## Install via BRAT
+[BRAT](https://github.com/TfTHacker/obsidian42-brat) (Beta Reviewers Auto-update Tool) installs and auto-updates this plugin straight from GitHub:
+
+1. Install the **BRAT** plugin from Obsidian's Community Plugins and enable it.
+2. Run the command **"BRAT: Add a beta plugin for testing"**.
+3. Paste this repository URL: `https://github.com/garciacsci/obsidian-bible-linker-plugin`
+4. Enable **Robust Bible Linking** under Settings → Community plugins.
+
+BRAT automatically pulls each new release as it is published.
 
 ## Usage
 1. Use command "Copy bible verses" or "Create obsidian links to bible verses" (described bellow).
@@ -71,11 +84,11 @@ Basically no requirements, it just parses your input and creates links based on 
 ## Support
 If you want to support this plugin, star it on GitHub. Thank you.
 
-## Installing 
-Available through Obsidian Community plugins (Settings/Community plugins) 
+## Installing
+This fork is distributed via **BRAT** — see [Install via BRAT](#install-via-brat) above.
 
 ### Manual install
-Copy over `main.js`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`
+Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/garciacsci/obsidian-bible-linker-plugin/releases) and copy them into `VaultFolder/.obsidian/plugins/robust-bible-linking/`.
 
 ## Star History
 
