@@ -101,6 +101,27 @@ describe("buildQuote — single-chapter callout", () => {
 		);
 	});
 
+	it("renders non-contiguous same-chapter chunks as one quote: ellipsis gap, a link per chunk", async () => {
+		const gen1full: Chapter = {
+			fileName: "Gen 1",
+			verses: Array.from({ length: 12 }, (_, i) => ({
+				number: i + 1,
+				text: `v${i + 1}`,
+				anchor: `${i + 1}`,
+			})),
+		};
+		const ref = [
+			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } },
+			{ book: "Gen", chapter: 1, range: { startVerse: 10, endVerse: 12 } },
+		];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1full }), settings, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#1|Genesis 1,1-3]],[[Gen 1#10|10-12]]\n" +
+				"> ¹v1 ²v2 ³v3 … ¹⁰v10 ¹¹v11 ¹²v12\n" +
+				"> [[Gen 1#2|]][[Gen 1#3|]][[Gen 1#11|]][[Gen 1#12|]]"
+		);
+	});
+
 	it("aborts by throwing an error naming the segment when the chapter cannot be resolved", async () => {
 		const ref = [{ book: "Gen", chapter: 99, range: { startVerse: 1, endVerse: 3 } }];
 		await expect(buildQuote(ref, fakeSource({ "Gen 1": gen1 }), settings, "")).rejects.toThrow(
