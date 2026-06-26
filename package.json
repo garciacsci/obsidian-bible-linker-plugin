@@ -6,7 +6,9 @@
     "scripts": {
         "dev": "node esbuild.config.mjs",
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-        "version": "node version-bump.mjs && git add manifest.json versions.json"
+        "version": "node version-bump.mjs && git add manifest.json versions.json",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "keywords": [],
     "author": "garciacsci (fork of Jakub Kuchejda's Bible Linker)",
@@ -19,7 +21,8 @@
         "esbuild": "^0.13.12",
         "obsidian": "^1.0.0",
         "tslib": "2.3.1",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "vitest": "^4.1.9"
     },
     "dependencies": {
         "eslint": "^8.10.0"
