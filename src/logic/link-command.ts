@@ -3,6 +3,7 @@ import {LinkType} from "../modals/link-verse-modal";
 import {PluginSettings} from "../main";
 import {multipleChaptersRegEx} from "../utils/regexes";
 import {capitalize, getFileByFilename, parseUserBookInput, parseUserVerseInput,} from "./common";
+import expandBibleBookName from "../utils/expandedBookName";
 
 /**
  * Converts biblical reference to links to given verses or books
@@ -97,10 +98,11 @@ function getLinkEnding(currentVerse: number, beginVerse: number, endVerse: numbe
 		case LinkType.Invisible:
 			return "|"
 		case LinkType.FirstAndLast: {
+			const displayBook = expandBibleBookName(bookAndChapter); // show fully-qualified book name in alt text
 			if (beginVerse === endVerse) {
-				return `|${bookAndChapter}${settings.oneVerseNotation}${currentVerse}`
+				return `|${displayBook}${settings.oneVerseNotation}${currentVerse}`
 			} else if (currentVerse === beginVerse) {
-				return `|${bookAndChapter}${settings.multipleVersesNotation}${currentVerse}`
+				return `|${displayBook}${settings.multipleVersesNotation}${currentVerse}`
 			}
 			if (currentVerse === endVerse) {
 				return `|-${currentVerse}`
