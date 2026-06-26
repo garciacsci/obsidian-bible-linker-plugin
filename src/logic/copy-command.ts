@@ -5,6 +5,7 @@ import { capitalize, getFileByFilename as getTFileByFilename } from "./common";
 import { parseReference } from "./reference";
 import { ObsidianVerseSource } from "./obsidian-verse-source";
 import { Verse } from "./verse-source";
+import { buildQuote } from "./quote";
 import {numbersToSuperscript} from "../utils/functions";
 
 /**
@@ -20,23 +21,40 @@ import {numbersToSuperscript} from "../utils/functions";
  */
 export async function getTextOfVerses(app: App, userInput: string, settings: PluginSettings, translationPath: string, linkOnly: boolean, verbose = true): Promise<string> {
 
-    let book: string, chapter: number, beginVerse: number, endVerse: number;
+    let reference;
     try {
-        const [segment] = parseReference(userInput, settings);
-        book = segment.book;
-        chapter = segment.chapter;
-        beginVerse = segment.range.startVerse;
-        endVerse = segment.range.endVerse;
+        reference = parseReference(userInput, settings);
     } catch (err) {
         if (verbose) {
             new Notice(`Wrong format "${userInput}"`);
         }
         throw err;
     }
+
+    const verseSource = new ObsidianVerseSource(app, settings);
+
+    // Text mode: a single inlined quote built by the pure builder (ADR-0001). It owns its own
+    // failure (throws naming the unresolvable segment); we surface that as a Notice.
+    if (!linkOnly) {
+        try {
+            return await buildQuote(reference, verseSource, settings, translationPath);
+        } catch (err) {
+            if (verbose) {
+                new Notice(err instanceof Error ? err.message : `${err}`);
+            }
+            throw err;
+        }
+    }
+
+    // Link-only mode keeps the legacy link assembly (the Link-command grammar lands in #13).
+    const [segment] = reference;
+    const { book, chapter } = segment;
+    const beginVerse = segment.range.startVerse;
+    const endVerse = segment.range.endVerse;
     const bookAndChapter = capitalize(`${book} ${chapter}`) // For output consistency
     const { fileName, tFile } = getTFileByFilename(app, bookAndChapter, translationPath, settings);
     if (tFile) {
-        const verses = await new ObsidianVerseSource(app, settings).getChapterVerses(book, chapter, translationPath);
+        const { verses } = await verseSource.getChapter(book, chapter, translationPath);
         return createCopyOutput(app, tFile, fileName, verses, beginVerse, endVerse, settings, translationPath, linkOnly, verbose);
     } else {
         if (verbose) {

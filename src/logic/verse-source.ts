@@ -8,9 +8,16 @@
 /** The atom of scripture, addressed by its number within a chapter. */
 export type Verse = { number: number; text: string; anchor: string };
 
-/** Yields the verses of a chapter file, hiding how they are stored and read. */
+/**
+ * A resolved chapter file: its link-target name (as actually found on disk, e.g. "Gen 1"
+ * or the OBSK "Gen-01") plus the verses it holds. The fileName is what links point at, so
+ * the builders can target the same file the text was read from.
+ */
+export type Chapter = { fileName: string; verses: Verse[] };
+
+/** Yields a resolved chapter file, hiding how it is named, stored, and read. */
 export interface VerseSource {
-	getChapterVerses(book: string, chapter: number, translation: string): Promise<Verse[]>;
+	getChapter(book: string, chapter: number, translation: string): Promise<Chapter>;
 }
 
 /** The slice of an Obsidian HeadingCache the extractor needs (kept Obsidian-free). */

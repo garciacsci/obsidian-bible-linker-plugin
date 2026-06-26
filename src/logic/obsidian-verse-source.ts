@@ -7,14 +7,17 @@
 import { App } from "obsidian";
 import type { PluginSettings } from "../main";
 import { capitalize, getFileByFilename } from "./common";
-import { extractChapterVerses, HeadingInfo, Verse, VerseSource } from "./verse-source";
+import { Chapter, extractChapterVerses, HeadingInfo, VerseSource } from "./verse-source";
 
 export class ObsidianVerseSource implements VerseSource {
 	constructor(private app: App, private settings: PluginSettings) {}
 
-	async getChapterVerses(book: string, chapter: number, translation: string): Promise<Verse[]> {
+	async getChapter(book: string, chapter: number, translation: string): Promise<Chapter> {
 		const filename = capitalize(`${book} ${chapter}`);
-		const { tFile } = getFileByFilename(this.app, filename, translation, this.settings);
+		const { fileName, tFile } = getFileByFilename(this.app, filename, translation, this.settings);
+		if (!tFile) {
+			throw new Error(`Chapter file not found: ${filename}`);
+		}
 
 		const lines = (await this.app.vault.read(tFile)).split(/\r?\n/);
 		const headings: HeadingInfo[] = (
@@ -25,9 +28,10 @@ export class ObsidianVerseSource implements VerseSource {
 			line: heading.position.start.line,
 		}));
 
-		return extractChapterVerses(lines, headings, {
+		const verses = extractChapterVerses(lines, headings, {
 			verseHeadingLevel: this.settings.verseHeadingLevel,
 			verseOffset: this.settings.verseOffset,
 		});
+		return { fileName, verses };
 	}
 }

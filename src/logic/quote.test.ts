@@ -1,0 +1,110 @@
+import { describe, it, expect } from "vitest";
+import type { PluginSettings } from "../main";
+import { buildQuote } from "./quote";
+import type { Chapter, VerseSource } from "./verse-source";
+
+// Only the knobs buildQuote reads; the rest of PluginSettings is irrelevant to the pure builder.
+const settings = {
+	oneVerseNotation: ".",
+	multipleVersesNotation: ",",
+	useInvisibleLinks: true,
+} as PluginSettings;
+
+// A fake VerseSource holding known chapters, so the builder is tested without Obsidian.
+function fakeSource(chapters: Record<string, Chapter>): VerseSource {
+	return {
+		async getChapter(book, chapter) {
+			const found = chapters[`${book} ${chapter}`];
+			if (!found) throw new Error("not found");
+			return found;
+		},
+	};
+}
+
+const gen1: Chapter = {
+	fileName: "Gen 1",
+	verses: [
+		{ number: 1, text: "In the beginning", anchor: "1" },
+		{ number: 2, text: "Now the earth", anchor: "2" },
+		{ number: 3, text: "And God said", anchor: "3" },
+	],
+};
+
+describe("buildQuote — single-chapter callout", () => {
+	it("renders a [!quote] callout: full-book-name title link, flowing superscript body, trailing invisible links", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } }];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), settings, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#1|Genesis 1,1-3]]\n" +
+				"> ¹In the beginning ²Now the earth ³And God said\n" +
+				"> [[Gen 1#2|]][[Gen 1#3|]]"
+		);
+	});
+
+	it("uses the one-verse notation and adds no invisible links for a single verse", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } }];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), settings, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#1|Genesis 1.1]]\n" + "> ¹In the beginning"
+		);
+	});
+
+	it("expands a multi-word numbered book and links the resolved chapter file name", async () => {
+		const oneCor13: Chapter = {
+			fileName: "1 Cor 13",
+			verses: [
+				{ number: 1, text: "If I speak", anchor: "1" },
+				{ number: 2, text: "and have not love", anchor: "2" },
+				{ number: 3, text: "I gain nothing", anchor: "3" },
+				{ number: 4, text: "Love is patient", anchor: "4" },
+				{ number: 5, text: "it does not envy", anchor: "5" },
+			],
+		};
+		const ref = [{ book: "1 Cor", chapter: 13, range: { startVerse: 4, endVerse: 5 } }];
+		const out = await buildQuote(ref, fakeSource({ "1 Cor 13": oneCor13 }), settings, "");
+		expect(out).toBe(
+			"> [!quote] [[1 Cor 13#4|1 Corinthians 13,4-5]]\n" +
+				"> ⁴Love is patient ⁵it does not envy\n" +
+				"> [[1 Cor 13#5|]]"
+		);
+	});
+
+	it("omits the invisible links line when useInvisibleLinks is off", async () => {
+		const noInvisible = { ...settings, useInvisibleLinks: false } as PluginSettings;
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } }];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), noInvisible, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#1|Genesis 1,1-3]]\n" +
+				"> ¹In the beginning ²Now the earth ³And God said"
+		);
+	});
+
+	it("flows a multi-line verse into prose, joining its lines with a space", async () => {
+		const ps23: Chapter = {
+			fileName: "Ps 23",
+			verses: [{ number: 1, text: "The Lord is my shepherd\nI shall not want", anchor: "1" }],
+		};
+		const ref = [{ book: "Ps", chapter: 23, range: { startVerse: 1, endVerse: 1 } }];
+		const out = await buildQuote(ref, fakeSource({ "Ps 23": ps23 }), settings, "");
+		expect(out).toBe(
+			"> [!quote] [[Ps 23#1|Psalms 23.1]]\n" + "> ¹The Lord is my shepherd I shall not want"
+		);
+	});
+
+	it("clamps an end verse past the chapter to the last available verse", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 5 } }];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), settings, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#1|Genesis 1,1-3]]\n" +
+				"> ¹In the beginning ²Now the earth ³And God said\n" +
+				"> [[Gen 1#2|]][[Gen 1#3|]]"
+		);
+	});
+
+	it("aborts by throwing an error naming the segment when the chapter cannot be resolved", async () => {
+		const ref = [{ book: "Gen", chapter: 99, range: { startVerse: 1, endVerse: 3 } }];
+		await expect(buildQuote(ref, fakeSource({ "Gen 1": gen1 }), settings, "")).rejects.toThrow(
+			/Genesis 99/
+		);
+	});
+});
