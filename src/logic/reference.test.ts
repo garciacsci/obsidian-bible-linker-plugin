@@ -46,6 +46,20 @@ describe("parseReference — single-chapter parity", () => {
 		expect(parseReference("gen 1:1", settings)[0].book).toBe("gen");
 	});
 
+	it("splits non-contiguous same-chapter chunks, each inheriting book and chapter", () => {
+		expect(parseReference("Gen 1:1-3,10-12", settings)).toEqual([
+			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } },
+			{ book: "Gen", chapter: 1, range: { startVerse: 10, endVerse: 12 } },
+		]);
+	});
+
+	it("accepts a bare single verse as a following same-chapter chunk", () => {
+		expect(parseReference("Gen 1:1,5", settings)).toEqual([
+			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } },
+			{ book: "Gen", chapter: 1, range: { startVerse: 5, endVerse: 5 } },
+		]);
+	});
+
 	it("throws on malformed input instead of silently mis-parsing", () => {
 		expect(() => parseReference("not a reference", settings)).toThrow();
 		expect(() => parseReference("Gen 1", settings)).toThrow();
