@@ -4,8 +4,6 @@
 import {
 	bookAndChapterRegEx,
 	multipleChaptersRegEx,
-	multipleVersesRegEx,
-	oneVerseRegEx,
 } from "../utils/regexes";
 import { App, Notice } from "obsidian";
 import { PluginSettings } from "../main";
@@ -24,46 +22,6 @@ export function capitalize(str: string) {
 		}
 	}
 	return str;
-}
-
-/**
- * Parses input from user, expecting chapter and verses
- * @param userInput
- * @param verbose Whether or not user should be notified if the link is incorrect
- */
-export function parseUserVerseInput(userInput: string, verbose = true) {
-	let bookAndChapter;
-	let beginVerse;
-	let endVerse;
-
-	switch (true) {
-		case oneVerseRegEx.test(userInput): {
-			// one verse
-			const [, matchedChapter, matchedVerse] =
-				userInput.match(oneVerseRegEx);
-			bookAndChapter = matchedChapter;
-			beginVerse = Number(matchedVerse);
-			endVerse = Number(matchedVerse);
-			break;
-		}
-		case multipleVersesRegEx.test(userInput): {
-			// multiple verses, one chapter
-			const [, matchedChapter, matchedBeginVerse, matchedEndVerse] =
-				userInput.match(multipleVersesRegEx);
-			bookAndChapter = matchedChapter;
-			beginVerse = Number(matchedBeginVerse);
-			endVerse = Number(matchedEndVerse);
-			break;
-		}
-		default: {
-			if (verbose) {
-				new Notice(`Wrong format "${userInput}"`);
-			}
-			throw "Could not parse user input";
-		}
-	}
-
-	return { bookAndChapter, beginVerse, endVerse };
 }
 
 /**

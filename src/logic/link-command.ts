@@ -2,7 +2,8 @@ import {App, Notice} from "obsidian";
 import {LinkType} from "../modals/link-verse-modal";
 import {PluginSettings} from "../main";
 import {multipleChaptersRegEx} from "../utils/regexes";
-import {capitalize, getFileByFilename, parseUserBookInput, parseUserVerseInput,} from "./common";
+import {capitalize, getFileByFilename, parseUserBookInput,} from "./common";
+import {parseReference} from "./reference";
 import expandBibleBookName from "../utils/expandedBookName";
 
 /**
@@ -50,9 +51,16 @@ async function getLinksForVerses(
 	useNewLine: boolean,
 	settings: PluginSettings
 ) {
-	// eslint-disable-next-line prefer-const
-	let { bookAndChapter, beginVerse, endVerse } =
-		parseUserVerseInput(userInput);
+	let bookAndChapter: string, beginVerse: number, endVerse: number;
+	try {
+		const [{ book, chapter, range }] = parseReference(userInput, settings);
+		bookAndChapter = `${book} ${chapter}`;
+		beginVerse = range.startVerse;
+		endVerse = range.endVerse;
+	} catch (err) {
+		new Notice(`Wrong format "${userInput}"`);
+		throw err;
+	}
 	if (settings.shouldCapitalizeBookNames) {
 		bookAndChapter = capitalize(bookAndChapter); // For output consistency
 	}

@@ -1,7 +1,8 @@
 import { App, HeadingCache, Notice, TFile } from "obsidian";
 import { PluginSettings } from "../main";
 import {bookAndChapterRegEx, escapeForRegex, isOBSKFileRegEx} from "../utils/regexes";
-import { capitalize, getFileByFilename as getTFileByFilename, parseUserVerseInput } from "./common";
+import { capitalize, getFileByFilename as getTFileByFilename } from "./common";
+import { parseReference } from "./reference";
 import {numbersToSuperscript} from "../utils/functions";
 
 /**
@@ -17,8 +18,18 @@ import {numbersToSuperscript} from "../utils/functions";
  */
 export async function getTextOfVerses(app: App, userInput: string, settings: PluginSettings, translationPath: string, linkOnly: boolean, verbose = true): Promise<string> {
 
-    // eslint-disable-next-line prefer-const
-    let { bookAndChapter, beginVerse, endVerse } = parseUserVerseInput(userInput, verbose);
+    let bookAndChapter: string, beginVerse: number, endVerse: number;
+    try {
+        const [{ book, chapter, range }] = parseReference(userInput, settings);
+        bookAndChapter = `${book} ${chapter}`;
+        beginVerse = range.startVerse;
+        endVerse = range.endVerse;
+    } catch (err) {
+        if (verbose) {
+            new Notice(`Wrong format "${userInput}"`);
+        }
+        throw err;
+    }
     bookAndChapter = capitalize(bookAndChapter) // For output consistency
     const { fileName, tFile } = getTFileByFilename(app, bookAndChapter, translationPath, settings);
     if (tFile) {
