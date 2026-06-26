@@ -1,8 +1,10 @@
-import { App, HeadingCache, Notice, TFile } from "obsidian";
+import { App, Notice, TFile } from "obsidian";
 import { PluginSettings } from "../main";
 import {bookAndChapterRegEx, escapeForRegex, isOBSKFileRegEx} from "../utils/regexes";
 import { capitalize, getFileByFilename as getTFileByFilename } from "./common";
 import { parseReference } from "./reference";
+import { ObsidianVerseSource } from "./obsidian-verse-source";
+import { Verse } from "./verse-source";
 import {numbersToSuperscript} from "../utils/functions";
 
 /**
@@ -18,22 +20,24 @@ import {numbersToSuperscript} from "../utils/functions";
  */
 export async function getTextOfVerses(app: App, userInput: string, settings: PluginSettings, translationPath: string, linkOnly: boolean, verbose = true): Promise<string> {
 
-    let bookAndChapter: string, beginVerse: number, endVerse: number;
+    let book: string, chapter: number, beginVerse: number, endVerse: number;
     try {
-        const [{ book, chapter, range }] = parseReference(userInput, settings);
-        bookAndChapter = `${book} ${chapter}`;
-        beginVerse = range.startVerse;
-        endVerse = range.endVerse;
+        const [segment] = parseReference(userInput, settings);
+        book = segment.book;
+        chapter = segment.chapter;
+        beginVerse = segment.range.startVerse;
+        endVerse = segment.range.endVerse;
     } catch (err) {
         if (verbose) {
             new Notice(`Wrong format "${userInput}"`);
         }
         throw err;
     }
-    bookAndChapter = capitalize(bookAndChapter) // For output consistency
+    const bookAndChapter = capitalize(`${book} ${chapter}`) // For output consistency
     const { fileName, tFile } = getTFileByFilename(app, bookAndChapter, translationPath, settings);
     if (tFile) {
-        return await createCopyOutput(app, tFile, fileName, beginVerse, endVerse, settings, translationPath, linkOnly, verbose);
+        const verses = await new ObsidianVerseSource(app, settings).getChapterVerses(book, chapter, translationPath);
+        return createCopyOutput(app, tFile, fileName, verses, beginVerse, endVerse, settings, translationPath, linkOnly, verbose);
     } else {
         if (verbose) {
             new Notice(`File ${bookAndChapter} not found`);
@@ -43,47 +47,11 @@ export async function getTextOfVerses(app: App, userInput: string, settings: Plu
 }
 
 /**
- * Returns text of given verse using given headings and lines.
- * @param verseNumber Number of desired verse.
- * @param headings List of headings that should be searched. Second heading must correspond to first verse, third heading to second verse and so on.
- * @param lines Lines of file from which verse text should be taken.
- * @param keepNewlines If set to true, text will contain newlines if present in source, if set to false, newlines will be changed to spaces
- * @param newLinePrefix Prefix for each line of verse, if verse is multiline and keepNewLines = true
- * @returns Text of given verse.
+ * Renders a verse's canonical text (content lines joined by "\n") into the configured layout:
+ * either "\n" + prefix per line (newLines), or a single space between lines.
  */
-function getVerseText(verseNumber: number, headings: HeadingCache[], lines: string[], keepNewlines: boolean, newLinePrefix: string) {
-    if (verseNumber >= headings.length) { // out of range
-        new Notice("Verse out of range for given file")
-        throw `VerseNumber ${verseNumber} is out of range of headings with length ${headings.length}`
-    }
-
-    const headingLine = headings[verseNumber].position.start.line;
-    if (headingLine + 1 >= lines.length) { // out of range
-        new Notice("Unexpected end of file. Is there an empty verse at the end?")
-        throw `HeadingLine ${headingLine + 1} is out of range of lines with length ${lines}`
-    }
-
-    // This part is necessary for verses that span over multiple lines
-    let output = "";
-    let line = "";
-    let i = 1;
-    let isFirst = true;
-
-    while (headingLine + i < lines.length) {
-        line = lines[headingLine + i]; // get next line
-        if (/^#/.test(line) || (!line && !isFirst)) {
-            break; // heading line (next verse) or empty line after verse => do not continue
-        }
-        i++;
-        if (line) { // if line has content (is not empty string)
-            if (!isFirst) { // If it is not first line of the verse, add divider
-                output += keepNewlines ? `\n${newLinePrefix}` : " ";
-            }
-            isFirst = false;
-            output += line;
-        }
-    }
-    return output;
+function renderVerseText(text: string, keepNewlines: boolean, newLinePrefix: string) {
+    return keepNewlines ? text.replace(/\n/g, `\n${newLinePrefix}`) : text.replace(/\n/g, " ");
 }
 
 /**
@@ -148,10 +116,10 @@ function getFileFolderInTranslation(app: App, filename: string, translation: str
  * {t} -> name of translation (if multiple translations are used)
  * ```
  */
-function formatVerseInformation(stringToFormat: string, settings: PluginSettings, i: number, fileName: string, translationPath: string) {
+function formatVerseInformation(stringToFormat: string, settings: PluginSettings, verseNumber: number, fileName: string, translationPath: string) {
 	let output = "";
-	output += stringToFormat.replace(/{n}/g, `${i - settings.verseOffset}`);
-	output = output.replace(/{u}/g, numbersToSuperscript(`${i - settings.verseOffset}`));
+	output += stringToFormat.replace(/{n}/g, `${verseNumber}`);
+	output = output.replace(/{u}/g, numbersToSuperscript(`${verseNumber}`));
 	output = output.replace(/{f}/g, `${fileName}`);
 	if (settings.enableMultipleTranslations) {
 		output = output.replace(/{t}/g, `${getTranslationNameFromPath(translationPath)}`);
@@ -159,19 +127,10 @@ function formatVerseInformation(stringToFormat: string, settings: PluginSettings
 	return output;
 }
 
-async function createCopyOutput(app: App, tFile: TFile, fileName: string, beginVerse: number, endVerse: number, settings: PluginSettings, translationPath: string, linkOnly: boolean, verbose: boolean) {
+async function createCopyOutput(app: App, tFile: TFile, fileName: string, verses: Verse[], beginVerse: number, endVerse: number, settings: PluginSettings, translationPath: string, linkOnly: boolean, verbose: boolean) {
 	const bookAndChapterOutput = createBookAndChapterOutput(tFile.basename, settings);
-	const file = app.vault.read(tFile)
-	const lines = (await file).split(/\r?\n/)
-	const verseHeadingLevel = settings.verseHeadingLevel
-	const headings = app.metadataCache.getFileCache(tFile).headings.filter(heading => !verseHeadingLevel || heading.level === verseHeadingLevel)
-	const beginVerseNoOffset = beginVerse
-	beginVerse += settings.verseOffset
-	endVerse += settings.verseOffset
-	const nrOfVerses = headings.length - 1;
+	const nrOfVerses = verses.length;
 	const maxVerse = endVerse < nrOfVerses ? endVerse : nrOfVerses; // if endverse is bigger than chapter allows, it is lowered to maximum
-	const maxVerseNoOffset = maxVerse - settings.verseOffset;
-
 
 	if (beginVerse > maxVerse) {
 		if (verbose) {
@@ -200,12 +159,12 @@ async function createCopyOutput(app: App, tFile: TFile, fileName: string, beginV
 	}
 
 	if (beginVerse === maxVerse) {
-		res += `[[${pathToUse ? pathToUse + "/" : ""}${fileName}#${headings[beginVerse].heading}|${bookAndChapterOutput}${settings.oneVerseNotation}${beginVerseNoOffset}]]${postfix}` // [[Gen 1#1|Gen 1,1.1]]
+		res += `[[${pathToUse ? pathToUse + "/" : ""}${fileName}#${verses[beginVerse - 1].anchor}|${bookAndChapterOutput}${settings.oneVerseNotation}${beginVerse}]]${postfix}` // [[Gen 1#1|Gen 1,1.1]]
 	} else if (settings.linkEndVerse) {
-		res += `[[${pathToUse ? pathToUse + "/" : ""}${fileName}#${headings[beginVerse].heading}|${bookAndChapterOutput}${settings.multipleVersesNotation}${beginVerseNoOffset}-]]` // [[Gen 1#1|Gen 1,1-]]
-		res += `[[${pathToUse ? pathToUse + "/" : ""}${fileName}#${headings[maxVerse].heading}|${maxVerseNoOffset}]]${postfix}`; // [[Gen 1#3|3]]
+		res += `[[${pathToUse ? pathToUse + "/" : ""}${fileName}#${verses[beginVerse - 1].anchor}|${bookAndChapterOutput}${settings.multipleVersesNotation}${beginVerse}-]]` // [[Gen 1#1|Gen 1,1-]]
+		res += `[[${pathToUse ? pathToUse + "/" : ""}${fileName}#${verses[maxVerse - 1].anchor}|${maxVerse}]]${postfix}`; // [[Gen 1#3|3]]
 	} else {
-		res += `[[${pathToUse ? pathToUse + "/" : ""}${fileName}#${headings[beginVerse].heading}|${bookAndChapterOutput}${settings.multipleVersesNotation}${beginVerseNoOffset}-${maxVerseNoOffset}]]${postfix}` // [[Gen 1#1|Gen 1,1-3]]
+		res += `[[${pathToUse ? pathToUse + "/" : ""}${fileName}#${verses[beginVerse - 1].anchor}|${bookAndChapterOutput}${settings.multipleVersesNotation}${beginVerse}-${maxVerse}]]${postfix}` // [[Gen 1#1|Gen 1,1-3]]
 	}
 
 	// 2 - Text of verses
@@ -217,7 +176,7 @@ async function createCopyOutput(app: App, tFile: TFile, fileName: string, beginV
 			if (settings.eachVersePrefix) {
 				versePrefix = formatVerseInformation(settings.eachVersePrefix, settings, i, fileName, translationPath);
 			}
-			let verseText = getVerseText(i, headings, lines, settings.newLines, settings.prefix);
+			let verseText = renderVerseText(verses[i - 1].text, settings.newLines, settings.prefix);
 			if (settings.eachVersePostfix) {
 				versePostfix = formatVerseInformation(settings.eachVersePostfix, settings, i, fileName, translationPath);
 			}
@@ -252,7 +211,7 @@ async function createCopyOutput(app: App, tFile: TFile, fileName: string, beginV
     for (let i = beginVerse; i <= lastVerseToLink; i++) { // beginVerse + 1 because link to first verse is already inserted before the text
         if (!settings.enableMultipleTranslations) {
 			if (i == beginVerse) continue; // already linked in the first link before text
-            res += `[[${fileName}#${headings[i].heading}|]]`
+            res += `[[${fileName}#${verses[i - 1].anchor}|]]`
         }
         else { // multiple translations 
             let translationPathsToUse: string[] = [];
@@ -284,7 +243,7 @@ async function createCopyOutput(app: App, tFile: TFile, fileName: string, beginV
 			if (translationPathsToUse.length === 0) return;
 
             translationPathsToUse.forEach((translationPath) => {
-                res += `[[${translationPath}/${fileName}#${headings[i].heading}|]]`
+                res += `[[${translationPath}/${fileName}#${verses[i - 1].anchor}|]]`
             })
         }
 
