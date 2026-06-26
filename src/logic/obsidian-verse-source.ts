@@ -1,0 +1,33 @@
+/*
+ * The Obsidian-backed VerseSource adapter: the one place that touches vault.read and the
+ * metadataCache heading index. It resolves a chapter file the same way the commands do and
+ * hands the raw lines + headings to the pure extractor, isolating today's fragile
+ * heading-level / offset / line-scanning heuristics behind the port.
+ */
+import { App } from "obsidian";
+import type { PluginSettings } from "../main";
+import { capitalize, getFileByFilename } from "./common";
+import { extractChapterVerses, HeadingInfo, Verse, VerseSource } from "./verse-source";
+
+export class ObsidianVerseSource implements VerseSource {
+	constructor(private app: App, private settings: PluginSettings) {}
+
+	async getChapterVerses(book: string, chapter: number, translation: string): Promise<Verse[]> {
+		const filename = capitalize(`${book} ${chapter}`);
+		const { tFile } = getFileByFilename(this.app, filename, translation, this.settings);
+
+		const lines = (await this.app.vault.read(tFile)).split(/\r?\n/);
+		const headings: HeadingInfo[] = (
+			this.app.metadataCache.getFileCache(tFile).headings ?? []
+		).map((heading) => ({
+			heading: heading.heading,
+			level: heading.level,
+			line: heading.position.start.line,
+		}));
+
+		return extractChapterVerses(lines, headings, {
+			verseHeadingLevel: this.settings.verseHeadingLevel,
+			verseOffset: this.settings.verseOffset,
+		});
+	}
+}
