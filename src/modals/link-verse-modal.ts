@@ -70,6 +70,7 @@ export default class LinkVerseModal extends Modal {
 			dropdown.addOption(LinkType.Basic, LinkType.Basic);
 			dropdown.addOption(LinkType.Embedded, LinkType.Embedded);
 			dropdown.addOption(LinkType.FirstAndLast, "Show First & Last");
+			dropdown.addOption(LinkType.TitleStyle, "Title style");
 			dropdown.addOption(LinkType.Invisible, LinkType.Invisible);
 			dropdown.onChange((value) => (this.linkType = value as LinkType));
 			dropdown.setValue(this.pluginSettings.linkTypePreset);

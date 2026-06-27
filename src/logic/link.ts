@@ -14,6 +14,7 @@ import type { VerseSource } from "./verse-source";
 import { LinkType } from "./link-type";
 import { capitalize } from "../utils/functions";
 import expandBibleBookName from "../utils/expandedBookName";
+import { buildSegmentLabels, type LabelInput } from "./segment-label";
 
 /** One cited verse as a link target: the "Book Chapter" stem plus the verse number. */
 type Cited = { bookAndChapter: string; verse: number };
@@ -30,6 +31,10 @@ export async function buildLinks(
 	verseSource: VerseSource,
 	translation: string
 ): Promise<string[]> {
+	if (linkType === LinkType.TitleStyle) {
+		return buildTitleStyleLinks(reference, settings, verseSource, translation);
+	}
+
 	const links: string[] = [];
 
 	for (const { book, chapter, range } of reference) {
@@ -69,6 +74,78 @@ export async function buildLinks(
 	return links;
 }
 
+/**
+ * The "Title style" path: one visible labeled link per chunk (labels from the shared segment-label
+ * helper, identical to the Copy-text title), each followed by invisible links to the chunk's other
+ * cited verses so every verse still lands in backlinks. Returns one string per chunk; the command's
+ * layout joins them with ", " (or one per line when "Each link on new line" is on).
+ */
+async function buildTitleStyleLinks(
+	reference: Reference,
+	settings: PluginSettings,
+	verseSource: VerseSource,
+	translation: string
+): Promise<string[]> {
+	// Resolve each chunk to its cited verses (with per-verse stems) and its human span. A
+	// single-chapter chunk needs no verse counts — it never touches the VerseSource — matching the
+	// rest of the Link command; only a cross-chapter range reads counts to enumerate the boundary.
+	const chunks: { cited: Cited[]; label: LabelInput }[] = [];
+	let totalVerses = 0;
+
+	for (const { book, chapter, range } of reference) {
+		const startStem = stemFor(book, chapter, settings);
+		const cited: Cited[] = [];
+		let span: string;
+
+		if (range.endChapter !== undefined && range.endChapter !== chapter) {
+			const start = await verseSource.getChapter(book, chapter, translation);
+			for (let v = range.startVerse; v <= start.verses.length; v++) {
+				cited.push({ bookAndChapter: startStem, verse: v });
+			}
+			const endStem = stemFor(book, range.endChapter, settings);
+			const end = await verseSource.getChapter(book, range.endChapter, translation);
+			const endVerse = Math.min(range.endVerse, end.verses.length);
+			for (let v = 1; v <= endVerse; v++) {
+				cited.push({ bookAndChapter: endStem, verse: v });
+			}
+			span = `${range.startVerse}-${range.endChapter}:${endVerse}`;
+		} else {
+			if (range.startVerse > range.endVerse) {
+				throw "Begin verse is bigger than end verse";
+			}
+			for (let v = range.startVerse; v <= range.endVerse; v++) {
+				cited.push({ bookAndChapter: startStem, verse: v });
+			}
+			span =
+				range.startVerse === range.endVerse
+					? `${range.startVerse}`
+					: `${range.startVerse}-${range.endVerse}`;
+		}
+
+		totalVerses += cited.length;
+		chunks.push({ cited, label: { book, chapter, endChapter: range.endChapter, span } });
+	}
+
+	const isSingleVerse = reference.length === 1 && totalVerses === 1;
+	const labels = buildSegmentLabels(
+		chunks.map((c) => c.label),
+		isSingleVerse,
+		settings
+	);
+
+	return chunks.map(({ cited }, i) => {
+		const [first, ...rest] = cited;
+		const visible = `[[${target(first, settings)}|${labels[i]}]]`;
+		const invisible = rest.map((c) => `[[${target(c, settings)}|]]`).join("");
+		return visible + invisible;
+	});
+}
+
+/** A cited verse's link target: the "Book Chapter" stem + separator + verse prefix + verse number. */
+function target(cited: Cited, settings: PluginSettings): string {
+	return `${cited.bookAndChapter}${settings.linkSeparator}${settings.versePrefix}${cited.verse}`;
+}
+
 /** The "Book Chapter" link stem, capitalized for output consistency when the setting is on. */
 function stemFor(book: string, chapter: number, settings: PluginSettings): string {
 	const stem = `${book} ${chapter}`;
@@ -84,7 +161,7 @@ function renderLink(
 ): string {
 	const beginning = linkType === LinkType.Embedded ? "!" : "";
 	const ending = getLinkEnding(cited, index, count, linkType, settings);
-	return `${beginning}[[${cited.bookAndChapter}${settings.linkSeparator}${settings.versePrefix}${cited.verse}${ending}]]`;
+	return `${beginning}[[${target(cited, settings)}${ending}]]`;
 }
 
 function getLinkEnding(

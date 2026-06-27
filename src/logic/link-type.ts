@@ -7,4 +7,7 @@ export enum LinkType {
 	Embedded = "Embedded",
 	Invisible = "Invisible",
 	FirstAndLast = "FirstAndLast",
+	// Chunk-labeled links mirroring the Copy-text title: one visible labeled link per chunk plus
+	// invisible links for the chunk's other verses (backlink parity). See buildTitleStyleLinks.
+	TitleStyle = "TitleStyle",
 }

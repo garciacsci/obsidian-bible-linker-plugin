@@ -88,7 +88,13 @@ async function getLinksForVerses(
 		throw err;
 	}
 
-	return useNewLine ? links.map((link) => `${link}\n`).join("") : links.join("");
+	if (useNewLine) {
+		return links.map((link) => `${link}\n`).join("");
+	}
+	// Title style renders one labeled link per chunk, so the chunks read as a sentence joined with
+	// ", " (the invisible backlink links sit inside each chunk and render as nothing); every other
+	// link type concatenates its per-verse links with no separator, as before.
+	return linkType === LinkType.TitleStyle ? links.join(", ") : links.join("");
 }
 
 

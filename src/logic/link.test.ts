@@ -196,3 +196,69 @@ describe("buildLinks — cross-chapter range", () => {
 		]);
 	});
 });
+
+describe("buildLinks — Title style", () => {
+	// A 31-verse Gen 1 and a short Gen 2 so the cross-chapter path can read each chapter's count.
+	const crossChapters = {
+		"Gen 1": {
+			fileName: "Gen 1",
+			verses: Array.from({ length: 31 }, (_, i) => ({ number: i + 1, text: `v${i + 1}`, anchor: `${i + 1}` })),
+		} as Chapter,
+		"Gen 2": {
+			fileName: "Gen 2",
+			verses: Array.from({ length: 3 }, (_, i) => ({ number: i + 1, text: `c2v${i + 1}`, anchor: `${i + 1}` })),
+		} as Chapter,
+	};
+
+	it("labels a single-verse reference with the one-verse notation and no invisible links", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 5, endVerse: 5 } }];
+		const out = await buildLinks(ref, LinkType.TitleStyle, settings, neverSource, "/");
+		expect(out).toEqual(["[[Gen 1#5|Genesis 1:5]]"]);
+	});
+
+	it("emits one labeled link per chunk with invisible links for the chunk's other verses", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } }];
+		const out = await buildLinks(ref, LinkType.TitleStyle, settings, neverSource, "/");
+		// Visible label on the first verse; verses 2-3 follow as invisible links (backlink parity).
+		expect(out).toEqual(["[[Gen 1#1|Genesis 1:1-3]][[Gen 1#2|]][[Gen 1#3|]]"]);
+	});
+
+	it("labels chunks like the Copy-text title across book and chapter changes", async () => {
+		// Romans 10:17; Hebrews 11:1-3, 12:1; Romans 8:28
+		const ref = [
+			{ book: "Rom", chapter: 10, range: { startVerse: 17, endVerse: 17 } },
+			{ book: "Heb", chapter: 11, range: { startVerse: 1, endVerse: 3 } },
+			{ book: "Heb", chapter: 12, range: { startVerse: 1, endVerse: 1 } },
+			{ book: "Rom", chapter: 8, range: { startVerse: 28, endVerse: 28 } },
+		];
+		const out = await buildLinks(ref, LinkType.TitleStyle, settings, neverSource, "/");
+		expect(out).toEqual([
+			"[[Rom 10#17|Romans 10:17]]",
+			"[[Heb 11#1|Hebrews 11:1-3]][[Heb 11#2|]][[Heb 11#3|]]",
+			"[[Heb 12#1|12:1]]",
+			"[[Rom 8#28|Romans 8:28]]",
+		]);
+		// As the command lays them out (newline off), the visible labels read as a sentence:
+		expect(out.join(", ")).toBe(
+			"[[Rom 10#17|Romans 10:17]], " +
+				"[[Heb 11#1|Hebrews 11:1-3]][[Heb 11#2|]][[Heb 11#3|]], " +
+				"[[Heb 12#1|12:1]], " +
+				"[[Rom 8#28|Romans 8:28]]"
+		);
+	});
+
+	it("targets and labels a cross-chapter chunk correctly, with invisible links across the boundary", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 30, endChapter: 2, endVerse: 2 } }];
+		const out = await buildLinks(ref, LinkType.TitleStyle, settings, fakeSource(crossChapters), "/");
+		expect(out).toEqual([
+			"[[Gen 1#30|Genesis 1:30-2:2]][[Gen 1#31|]][[Gen 2#1|]][[Gen 2#2|]]",
+		]);
+	});
+
+	it("honors the verse prefix and separator in link targets", async () => {
+		const custom = { ...settings, versePrefix: "v", linkSeparator: "#" } as PluginSettings;
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 2 } }];
+		const out = await buildLinks(ref, LinkType.TitleStyle, custom, neverSource, "/");
+		expect(out).toEqual(["[[Gen 1#v1|Genesis 1:1-2]][[Gen 1#v2|]]"]);
+	});
+});
