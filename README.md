@@ -1,6 +1,6 @@
 # Robust Bible Linking
 
-A personal fork of [Bible Linker](https://github.com/kuchejak/obsidian-bible-linker-plugin) by Jakub Kuchejda, customized and shared with friends.
+A personal fork of [Bible Linker](https://github.com/kuchejak/obsidian-bible-linker-plugin) by Jakub Kuchejda.
 
 Plugin for easier linking of multiple bible verses in Obsdian.md note taking app.
 
