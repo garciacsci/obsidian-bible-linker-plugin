@@ -81,6 +81,15 @@ describe("parseReference — single-chapter parity", () => {
 		]);
 	});
 
+	it("lets a bookless ; segment carry a verse range without the range hijacking the book", () => {
+		// The range's "-" must not be mistaken for a book/chapter divider: "12:1-6" is chapter 12
+		// verses 1-6 under the running book, not book "1" chapter "6".
+		expect(parseReference("Heb 11:1-3; 12:1-6", settings)).toEqual([
+			{ book: "Heb", chapter: 11, range: { startVerse: 1, endVerse: 3 } },
+			{ book: "Heb", chapter: 12, range: { startVerse: 1, endVerse: 6 } },
+		]);
+	});
+
 	it("throws on malformed input instead of silently mis-parsing", () => {
 		expect(() => parseReference("not a reference", settings)).toThrow();
 		expect(() => parseReference("Gen 1", settings)).toThrow();

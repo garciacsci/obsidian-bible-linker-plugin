@@ -34,8 +34,10 @@ function separatorRegexes(separators: string) {
 	// separator, "Gen 1/1-3" must split book "Gen" chapter "1", not book "Gen 1/1" chapter "3").
 	const bookClass = escapeForCharClass([...new Set((",:#" + configured).split(""))].join(""));
 	return {
-		// A part naming its own book: "Gen 1:1-3", "Rom 5:8". Groups: book, chapter.
-		bookAndChapterRegEx: new RegExp(`([^${bookClass}]*\\S)[-|\\s]+(\\d+)`),
+		// A part naming its own book: "Gen 1:1-3", "Rom 5:8". Groups: book, chapter. Anchored to
+		// the part's start so a bookless chapter switch carrying a range ("12:1-6") isn't misread
+		// as book "1" chapter "6" — the range's "-" must not be mistaken for a book/chapter divider.
+		bookAndChapterRegEx: new RegExp(`^([^${bookClass}]*\\S)[-|\\s]+(\\d+)`),
 		// The leading chapter:verse separator consumed after a part's "Book Chapter".
 		leadingSeparatorRegEx: new RegExp(`^\\s*[${leadClass}]\\s*`),
 		// A bookless ";" segment, "3:15": a chapter switch that keeps the running book.
