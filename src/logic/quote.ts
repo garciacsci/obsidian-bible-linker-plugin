@@ -25,6 +25,10 @@ export async function buildQuote(
 ): Promise<string> {
 	// Resolve each cited chapter once; abort the whole insertion if any is missing — a partial
 	// quote would mislead. (Within one chapter, #10 cites several chunks of the same file.)
+	// The body verse marker honors the configured style: superscript (default) or plain arabic.
+	const verseMarker = (n: number): string =>
+		settings.verseNumberStyle === "plain" ? `${n}` : numbersToSuperscript(`${n}`);
+
 	const chapters = new Map<string, Chapter>();
 	const resolve = async (book: string, chapter: number): Promise<Chapter> => {
 		const key = `${book} ${chapter}`;
@@ -63,12 +67,12 @@ export async function buildQuote(
 
 		if (range.endChapter !== undefined && range.endChapter !== chapter) {
 			for (let v = startVerse; v <= start.verses.length; v++) {
-				items.push(cite(start.fileName, start.verses[v - 1], numbersToSuperscript(`${v}`)));
+				items.push(cite(start.fileName, start.verses[v - 1], verseMarker(v)));
 			}
 			const end = await resolve(book, range.endChapter);
 			const endVerse = Math.min(range.endVerse, end.verses.length);
 			for (let v = 1; v <= endVerse; v++) {
-				const marker = v === 1 ? `**${range.endChapter}:${v}**` : numbersToSuperscript(`${v}`);
+				const marker = v === 1 ? `**${range.endChapter}:${v}**` : verseMarker(v);
 				items.push(cite(end.fileName, end.verses[v - 1], marker));
 			}
 			return { items, span: `${startVerse}-${range.endChapter}:${endVerse}` };
@@ -77,7 +81,7 @@ export async function buildQuote(
 		// An end verse past the chapter clamps to its last verse, matching the legacy Copy command.
 		const endVerse = Math.min(range.endVerse, start.verses.length);
 		for (let v = startVerse; v <= endVerse; v++) {
-			items.push(cite(start.fileName, start.verses[v - 1], numbersToSuperscript(`${v}`)));
+			items.push(cite(start.fileName, start.verses[v - 1], verseMarker(v)));
 		}
 		const span = startVerse === endVerse ? `${startVerse}` : `${startVerse}-${endVerse}`;
 		return { items, span };

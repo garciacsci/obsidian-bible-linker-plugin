@@ -384,6 +384,19 @@ export class SettingsTab extends PluginSettingTab {
                     })
             )
 
+        new Setting(containerEl)
+            .setName("Verse number style")
+            .setDesc("How verse numbers appear in the quote body.")
+            .addDropdown((dropdown) => {
+                dropdown.addOption("superscript", "Superscript (¹²³)")
+                dropdown.addOption("plain", "Plain (1 2 3)")
+                dropdown.setValue(this.plugin.settings.verseNumberStyle)
+                dropdown.onChange(async (value) => {
+                    this.plugin.settings.verseNumberStyle = value;
+                    await this.plugin.saveSettings();
+                })
+            })
+
         containerEl.createEl("h1", { text: "Link Bible verses command" });
 
         containerEl.createEl("h4", { text: "File format" });

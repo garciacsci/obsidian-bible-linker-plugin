@@ -271,3 +271,16 @@ describe("buildQuote — configurable callout wrapper", () => {
 		expect(out).toBe("> [[Gen 1#1|Genesis 1.1]]\n> ¹In the beginning");
 	});
 });
+
+describe("buildQuote — verse-number style", () => {
+	it("renders plain arabic verse numbers when the style is plain", async () => {
+		const plain = { ...settings, verseNumberStyle: "plain" } as PluginSettings;
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } }];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), plain, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#1|Genesis 1,1-3]]\n" +
+				"> 1In the beginning 2Now the earth 3And God said\n" +
+				"> [[Gen 1#2|]][[Gen 1#3|]]"
+		);
+	});
+});
