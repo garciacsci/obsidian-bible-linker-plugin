@@ -66,6 +66,21 @@ describe("parseReference — single-chapter parity", () => {
 		]);
 	});
 
+	it("splits on ; into cross-book segments, the second restating its own book", () => {
+		expect(parseReference("John 3:16; Rom 5:8", settings)).toEqual([
+			{ book: "John", chapter: 3, range: { startVerse: 16, endVerse: 16 } },
+			{ book: "Rom", chapter: 5, range: { startVerse: 8, endVerse: 8 } },
+		]);
+	});
+
+	it("lets a bookless ; segment keep the book while switching chapter (fully mixed)", () => {
+		expect(parseReference("Gen 1:1-3,10-12; 3:15", settings)).toEqual([
+			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } },
+			{ book: "Gen", chapter: 1, range: { startVerse: 10, endVerse: 12 } },
+			{ book: "Gen", chapter: 3, range: { startVerse: 15, endVerse: 15 } },
+		]);
+	});
+
 	it("throws on malformed input instead of silently mis-parsing", () => {
 		expect(() => parseReference("not a reference", settings)).toThrow();
 		expect(() => parseReference("Gen 1", settings)).toThrow();

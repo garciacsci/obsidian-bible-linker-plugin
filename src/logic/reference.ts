@@ -21,45 +21,69 @@ export type Reference = Segment[];
  */
 const verseChunkRegEx = /^(\d+)(?:\s*[-.=]\s*(?:(\d+)\s*[:.]\s*)?(\d+))?$/;
 
+/** A bookless ";" segment, "3:15": a chapter switch that keeps the running book. */
+const chapterSwitchRegEx = /^(\d+)\s*[:.,#]\s*(.+)$/;
+
 /**
  * Parses a user-typed reference into an ordered list of segments.
  * Pure: throws on malformed input, never shows a Notice (callers do that).
  *
- * Reads the leading book + chapter, consumes the first chapter:verse separator, then splits
- * the rest on "," into same-chapter chunks (one segment each). This makes "," do double duty
- * exactly as users write it: in "Gen 1,1" the first comma is the chapter:verse separator, while
- * in "Gen 1:1-3,10-12" the colon takes that role and the comma separates chunks. Following
- * chunks inherit the book and chapter of the chunk before them.
+ * The reference is split on ";" into parts, each carrying its own book and chapter. A part
+ * either restates the book ("Rom 5:8") or, when bookless ("3:15"), keeps the running book and
+ * only switches chapter — so a ";" may cross a book or a chapter boundary. Crossing a book is
+ * only ever separate segments, never a single range. Within a part the leading chapter:verse
+ * separator is consumed, then "," splits same-chapter chunks (one segment each): this makes ","
+ * do double duty exactly as users write it — in "Gen 1,1" the first comma is the chapter:verse
+ * separator, while in "Gen 1:1-3,10-12" the colon takes that role and the comma separates chunks.
  *
- * @param input Raw reference string, e.g. "Gen 1:1", "Gen 1,1-5", or "Gen 1:1-3,10-12".
+ * @param input Raw reference, e.g. "Gen 1:1", "Gen 1:1-3,10-12", "John 3:16; Rom 5:8".
  * @param settings Plugin settings (reserved for forward-compat; unused this slice).
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function parseReference(input: string, settings: PluginSettings): Reference {
-	const bookAndChapter = input.match(bookAndChapterRegEx);
-	if (!bookAndChapter) {
-		throw "Could not parse user input";
-	}
-	const [, book, chapter] = bookAndChapter;
+	const segments: Reference = [];
+	let runningBook: string | undefined;
 
-	// Everything after the matched "book chapter": a leading chapter:verse separator then chunks.
-	const rest = input
-		.slice(bookAndChapter.index + bookAndChapter[0].length)
-		.replace(/^\s*[,:.;#]\s*/, "");
+	for (const rawPart of input.split(";")) {
+		const part = rawPart.trim();
+		let book: string;
+		let chapter: number;
+		let rest: string;
 
-	const segments: Reference = rest.split(",").map((rawChunk) => {
-		const chunk = rawChunk.trim().match(verseChunkRegEx);
-		if (!chunk) {
-			throw "Could not parse user input";
+		const bookAndChapter = part.match(bookAndChapterRegEx);
+		if (bookAndChapter) {
+			// A part that names its own book: "Gen 1:1-3", "Rom 5:8".
+			book = bookAndChapter[1];
+			chapter = Number(bookAndChapter[2]);
+			rest = part
+				.slice(bookAndChapter.index + bookAndChapter[0].length)
+				.replace(/^\s*[,:.;#]\s*/, "");
+			runningBook = book;
+		} else {
+			// A bookless chapter switch, "3:15": keep the running book, switch chapter.
+			const chapterSwitch = part.match(chapterSwitchRegEx);
+			if (!chapterSwitch || runningBook === undefined) {
+				throw "Could not parse user input";
+			}
+			book = runningBook;
+			chapter = Number(chapterSwitch[1]);
+			rest = chapterSwitch[2];
 		}
-		const startVerse = Number(chunk[1]);
-		const endVerse = chunk[3] !== undefined ? Number(chunk[3]) : startVerse;
-		const range: Range =
-			chunk[2] !== undefined
-				? { startVerse, endChapter: Number(chunk[2]), endVerse }
-				: { startVerse, endVerse };
-		return { book, chapter: Number(chapter), range };
-	});
+
+		for (const rawChunk of rest.split(",")) {
+			const chunk = rawChunk.trim().match(verseChunkRegEx);
+			if (!chunk) {
+				throw "Could not parse user input";
+			}
+			const startVerse = Number(chunk[1]);
+			const endVerse = chunk[3] !== undefined ? Number(chunk[3]) : startVerse;
+			const range: Range =
+				chunk[2] !== undefined
+					? { startVerse, endChapter: Number(chunk[2]), endVerse }
+					: { startVerse, endVerse };
+			segments.push({ book, chapter, range });
+		}
+	}
 
 	return segments;
 }
