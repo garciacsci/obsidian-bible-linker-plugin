@@ -368,6 +368,21 @@ export class SettingsTab extends PluginSettingTab {
 			)
         // LINK -------------------------------------------------------------------------------------------------------------
 
+        containerEl.createEl("h4", { text: "Reference parsing" });
+
+        new Setting(containerEl)
+            .setName("Chapter–verse separator")
+            .setDesc('Characters accepted between a chapter and its verse, e.g. ":." accepts "Gen 1:1" and "Gen 1.1". The legacy comma form ("Gen 1,1") always works.')
+            .addText((inputBox) =>
+                inputBox
+                    .setPlaceholder(":.")
+                    .setValue(this.plugin.settings.chapterVerseSeparator)
+                    .onChange(async (value) => {
+                        this.plugin.settings.chapterVerseSeparator = value;
+                        await this.plugin.saveSettings();
+                    })
+            )
+
         containerEl.createEl("h4", { text: "Quote (text mode)" });
         containerEl.createEl("p", { text: "Knobs for the inlined quote inserted when copying verse text." });
 

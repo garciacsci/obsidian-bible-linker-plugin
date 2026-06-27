@@ -87,3 +87,26 @@ describe("parseReference — single-chapter parity", () => {
 		expect(() => parseReference("", settings)).toThrow();
 	});
 });
+
+describe("parseReference — configurable chapter↔verse separator", () => {
+	const custom = { chapterVerseSeparator: "/" } as PluginSettings;
+
+	it("accepts a configured custom separator between chapter and verse", () => {
+		expect(parseReference("Gen 1/1-3", custom)).toEqual([
+			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } },
+		]);
+	});
+
+	it("still accepts the legacy comma form regardless of the configured separator", () => {
+		expect(parseReference("Gen 1,1", custom)).toEqual([
+			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } },
+		]);
+	});
+
+	it("applies the custom separator to a bookless chapter switch too", () => {
+		expect(parseReference("Gen 1/1; 3/15", custom)).toEqual([
+			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } },
+			{ book: "Gen", chapter: 3, range: { startVerse: 15, endVerse: 15 } },
+		]);
+	});
+});
