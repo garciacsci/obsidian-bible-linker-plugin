@@ -1,5 +1,5 @@
 /*
- * Capitalizes given string (skips leading whitespaces and numbers)
+ * Obsidian-facing shared helpers for the commands: book-input parsing and file resolution.
  */
 import {
 	bookAndChapterRegEx,
@@ -8,21 +8,9 @@ import {
 import { App, Notice } from "obsidian";
 import { PluginSettings } from "../main";
 
-/**
- * Capitalizes given string, taking leading numbers into account
- * @param str String that should be capitalized
- */
-export function capitalize(str: string) {
-	str = str.toLocaleLowerCase();
-	for (let i = 0; i < str.length; i++) {
-		if (/[^\s\d.,#-]/.test(str.charAt(i))) {
-			return (
-				str.slice(0, i) + str.charAt(i).toUpperCase() + str.slice(i + 1)
-			);
-		}
-	}
-	return str;
-}
+// capitalize now lives in the Obsidian-free utils so the pure builders can share it; re-exported
+// here so existing importers (copy-command, link-command, obsidian-verse-source) are unaffected.
+export { capitalize } from "../utils/functions";
 
 /**
  * Parses input from user, expecting multiple chapters
