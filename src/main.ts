@@ -141,13 +141,18 @@ function replaceSelectionOrInsertAtCursor(str: string, editor: Editor) {
 	// Capture the insertion point before the edit: start of the selection if
 	// there is one, otherwise the current cursor position.
 	const insertionPoint = editor.getCursor("from");
+	// Append a trailing newline so the cursor lands on a clean line *below* the inserted block.
+	// For the Copy-verse callout (every line "> "-prefixed) this empty, non-"> " line also breaks
+	// out of the blockquote, so the user can type a normal paragraph without pressing Enter to
+	// escape the quote. The Link insert gets the same fresh-line-below behavior for consistency.
+	const text = `${str}\n`;
 	// Replace the current selection with str (or insert at cursor if nothing
 	// is selected). This deletes any selected text first.
-	editor.replaceSelection(str);
+	editor.replaceSelection(text);
 	// Explicitly move the cursor to the end of the inserted text using offsets
 	// (preserves the original replaceRangeAndMoveCursor behavior).
 	let offset = editor.posToOffset(insertionPoint);
-	offset += str.length;
+	offset += text.length;
 	editor.setCursor(editor.offsetToPos(offset));
 }
 
