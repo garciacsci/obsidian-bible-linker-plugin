@@ -29,6 +29,14 @@ export interface PluginSettings {
     oneVerseNotation: string;
     multipleVersesNotation: string;
 
+    // Quote (text mode) rendering & failure behavior
+    quoteCallout: string;            // callout wrapper, e.g. "[!quote]"; "" drops the callout line
+    verseNumberStyle: string;        // "superscript" | "plain"
+    showOmissionEllipsis: boolean;   // the " … " between non-contiguous same-chapter chunks
+    showChapterJumpMarker: boolean;  // the bold C:V at a same-book chapter jump
+    chapterVerseSeparator: string;   // chars accepted between chapter and verse (besides legacy ",")
+    insertPartialOnUnresolved: boolean; // false = abort whole quote; true = insert resolved, flag missing
+
     // Multiple translations
     enableMultipleTranslations: boolean;
     translationsPaths: string;
@@ -86,6 +94,14 @@ const DEFAULT_SETTINGS: Partial<PluginSettings> = {
     // Notation
     oneVerseNotation: ".",
     multipleVersesNotation: ",",
+
+    // Quote (text mode) rendering & failure behavior
+    quoteCallout: "[!quote]",
+    verseNumberStyle: "superscript",
+    showOmissionEllipsis: true,
+    showChapterJumpMarker: true,
+    chapterVerseSeparator: ":.",
+    insertPartialOnUnresolved: false,
 
     // Multiple translations
     enableMultipleTranslations: false,
