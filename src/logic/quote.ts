@@ -98,7 +98,17 @@ export async function buildQuote(
 
 	for (let s = 0; s < reference.length; s++) {
 		const { book, chapter, range } = reference[s];
-		const { items, span } = await citedVersesOf(reference[s]);
+		let items: Cited[];
+		let span: string;
+		try {
+			({ items, span } = await citedVersesOf(reference[s]));
+		} catch (err) {
+			// Default: abort the whole quote (a partial would mislead). When partial mode is on,
+			// keep the resolved segments and flag the unresolved one inline instead.
+			if (!settings.insertPartialOnUnresolved) throw err;
+			bodyLines.push(`**Could not find ${expandBibleBookName(`${book} ${chapter}`)}**`);
+			continue;
+		}
 		const first = items[0];
 		// A ";" segment may switch book or, within the same book, switch chapter.
 		const bookChanged = s > 0 && book.toLowerCase() !== prevBook;

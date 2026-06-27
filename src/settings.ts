@@ -436,6 +436,18 @@ export class SettingsTab extends PluginSettingTab {
                     })
             )
 
+        new Setting(containerEl)
+            .setName("Insert partial quote on a missing chapter")
+            .setDesc("If a referenced chapter file can't be found, insert the resolved segments and flag the missing one inline instead of aborting the whole quote.")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.insertPartialOnUnresolved)
+                    .onChange(async (value) => {
+                        this.plugin.settings.insertPartialOnUnresolved = value;
+                        await this.plugin.saveSettings();
+                    })
+            )
+
         containerEl.createEl("h1", { text: "Link Bible verses command" });
 
         containerEl.createEl("h4", { text: "File format" });

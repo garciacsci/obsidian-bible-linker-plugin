@@ -332,6 +332,23 @@ describe("buildQuote — chapter-jump marker toggle", () => {
 	});
 });
 
+describe("buildQuote — abort vs partial on an unresolved segment", () => {
+	it("inserts the resolved segments and flags the missing one in partial mode", async () => {
+		const partial = { ...settings, insertPartialOnUnresolved: true } as PluginSettings;
+		const ref = [
+			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } },
+			{ book: "Gen", chapter: 99, range: { startVerse: 1, endVerse: 1 } },
+		];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), partial, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#1|Genesis 1,1-3]]\n" +
+				"> ¹In the beginning ²Now the earth ³And God said\n" +
+				"> **Could not find Genesis 99**\n" +
+				"> [[Gen 1#2|]][[Gen 1#3|]]"
+		);
+	});
+});
+
 describe("buildQuote — verse-number style", () => {
 	it("renders plain arabic verse numbers when the style is plain", async () => {
 		const plain = { ...settings, verseNumberStyle: "plain" } as PluginSettings;
