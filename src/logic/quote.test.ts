@@ -272,6 +272,66 @@ describe("buildQuote — configurable callout wrapper", () => {
 	});
 });
 
+describe("buildQuote — omission ellipsis toggle", () => {
+	const gen1full: Chapter = {
+		fileName: "Gen 1",
+		verses: Array.from({ length: 12 }, (_, i) => ({ number: i + 1, text: `v${i + 1}`, anchor: `${i + 1}` })),
+	};
+
+	it("joins non-contiguous same-chapter chunks with a plain space when the ellipsis is off", async () => {
+		const off = { ...settings, showOmissionEllipsis: false } as PluginSettings;
+		const ref = [
+			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } },
+			{ book: "Gen", chapter: 1, range: { startVerse: 10, endVerse: 12 } },
+		];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1full }), off, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#1|Genesis 1,1-3]],[[Gen 1#10|10-12]]\n" +
+				"> ¹v1 ²v2 ³v3 ¹⁰v10 ¹¹v11 ¹²v12\n" +
+				"> [[Gen 1#2|]][[Gen 1#3|]][[Gen 1#11|]][[Gen 1#12|]]"
+		);
+	});
+});
+
+describe("buildQuote — chapter-jump marker toggle", () => {
+	const gen1full: Chapter = {
+		fileName: "Gen 1",
+		verses: Array.from({ length: 31 }, (_, i) => ({ number: i + 1, text: `v${i + 1}`, anchor: `${i + 1}` })),
+	};
+	const gen2: Chapter = {
+		fileName: "Gen 2",
+		verses: Array.from({ length: 3 }, (_, i) => ({ number: i + 1, text: `c2v${i + 1}`, anchor: `${i + 1}` })),
+	};
+
+	it("marks a cross-chapter jump with a plain verse number when the marker is off", async () => {
+		const off = { ...settings, showChapterJumpMarker: false } as PluginSettings;
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 27, endChapter: 2, endVerse: 2 } }];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1full, "Gen 2": gen2 }), off, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#27|Genesis 1,27-2:2]]\n" +
+				"> ²⁷v27 ²⁸v28 ²⁹v29 ³⁰v30 ³¹v31 ¹c2v1 ²c2v2\n" +
+				"> [[Gen 1#28|]][[Gen 1#29|]][[Gen 1#30|]][[Gen 1#31|]][[Gen 2#1|]][[Gen 2#2|]]"
+		);
+	});
+
+	it("marks a same-book chapter switch with a plain verse number when the marker is off", async () => {
+		const gen3: Chapter = {
+			fileName: "Gen 3",
+			verses: Array.from({ length: 15 }, (_, i) => ({ number: i + 1, text: `c3v${i + 1}`, anchor: `${i + 1}` })),
+		};
+		const off = { ...settings, showChapterJumpMarker: false } as PluginSettings;
+		const ref = [
+			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } },
+			{ book: "Gen", chapter: 3, range: { startVerse: 15, endVerse: 15 } },
+		];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1full, "Gen 3": gen3 }), off, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#1|Genesis 1,1]],[[Gen 3#15|3,15]]\n" +
+				"> ¹v1 … ¹⁵c3v15"
+		);
+	});
+});
+
 describe("buildQuote — verse-number style", () => {
 	it("renders plain arabic verse numbers when the style is plain", async () => {
 		const plain = { ...settings, verseNumberStyle: "plain" } as PluginSettings;

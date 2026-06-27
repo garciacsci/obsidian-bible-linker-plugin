@@ -397,6 +397,30 @@ export class SettingsTab extends PluginSettingTab {
                 })
             })
 
+        new Setting(containerEl)
+            .setName("Show omission ellipsis")
+            .setDesc('Insert " … " between non-contiguous same-chapter chunks to mark the omitted verses.')
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.showOmissionEllipsis)
+                    .onChange(async (value) => {
+                        this.plugin.settings.showOmissionEllipsis = value;
+                        await this.plugin.saveSettings();
+                    })
+            )
+
+        new Setting(containerEl)
+            .setName("Show chapter-jump marker")
+            .setDesc("Mark the first verse after a same-book chapter jump with a bold C:V instead of a plain verse number.")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.showChapterJumpMarker)
+                    .onChange(async (value) => {
+                        this.plugin.settings.showChapterJumpMarker = value;
+                        await this.plugin.saveSettings();
+                    })
+            )
+
         containerEl.createEl("h1", { text: "Link Bible verses command" });
 
         containerEl.createEl("h4", { text: "File format" });

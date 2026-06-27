@@ -72,7 +72,10 @@ export async function buildQuote(
 			const end = await resolve(book, range.endChapter);
 			const endVerse = Math.min(range.endVerse, end.verses.length);
 			for (let v = 1; v <= endVerse; v++) {
-				const marker = v === 1 ? `**${range.endChapter}:${v}**` : verseMarker(v);
+				const marker =
+					v === 1 && settings.showChapterJumpMarker
+						? `**${range.endChapter}:${v}**`
+						: verseMarker(v);
 				items.push(cite(end.fileName, end.verses[v - 1], marker));
 			}
 			return { items, span: `${startVerse}-${range.endChapter}:${endVerse}` };
@@ -121,7 +124,7 @@ export async function buildQuote(
 
 		// A same-book chapter switch marks its first verse with a bold C:V so the new chapter can't
 		// be misread, mirroring the cross-chapter range jump; a book jump restates the book instead.
-		if (chapterChanged) {
+		if (chapterChanged && settings.showChapterJumpMarker) {
 			items[0] = { ...first, marker: `**${chapter}:${range.startVerse}**` };
 		}
 		const bodyText = items.map((i) => i.marker + i.text).join(" ");
@@ -130,8 +133,10 @@ export async function buildQuote(
 		} else if (bookChanged) {
 			bodyLines.push(`**${fullName}** ${bodyText}`);
 		} else {
-			// Same book: a spaced ellipsis marks the gap to the previous chunk (honest omission).
-			bodyLines[bodyLines.length - 1] += ` … ${bodyText}`;
+			// Same book: a spaced ellipsis marks the gap to the previous chunk (honest omission);
+			// when the ellipsis is off, the chunks just run together with a plain space.
+			const gap = settings.showOmissionEllipsis ? " … " : " ";
+			bodyLines[bodyLines.length - 1] += `${gap}${bodyText}`;
 		}
 
 		// Every cited verse not already covered by its segment's link gets an invisible link.
