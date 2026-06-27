@@ -53,6 +53,12 @@ describe("parseReference — single-chapter parity", () => {
 		]);
 	});
 
+	it("parses a range whose end carries its own chapter (cross-chapter range)", () => {
+		expect(parseReference("Gen 1:27-2:2", settings)).toEqual([
+			{ book: "Gen", chapter: 1, range: { startVerse: 27, endChapter: 2, endVerse: 2 } },
+		]);
+	});
+
 	it("accepts a bare single verse as a following same-chapter chunk", () => {
 		expect(parseReference("Gen 1:1,5", settings)).toEqual([
 			{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } },

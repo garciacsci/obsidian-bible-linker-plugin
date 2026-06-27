@@ -14,8 +14,12 @@ export type Segment = { book: string; chapter: number; range: Range };
 /** A parsed reference: an ordered list of segments. */
 export type Reference = Segment[];
 
-/** A bare verse chunk in the verse portion: "10", "10-12" (range separators: - . =). */
-const verseChunkRegEx = /^(\d+)(?:\s*[-.=]\s*(\d+))?$/;
+/**
+ * A bare verse chunk in the verse portion: "10", "10-12" (range separators: - . =), or a
+ * range whose end carries its own chapter, "27-2:2" — the end's "chapter:" prefix lets a
+ * range cross a chapter boundary within the book. Groups: startVerse, endChapter?, endVerse.
+ */
+const verseChunkRegEx = /^(\d+)(?:\s*[-.=]\s*(?:(\d+)\s*[:.]\s*)?(\d+))?$/;
 
 /**
  * Parses a user-typed reference into an ordered list of segments.
@@ -49,8 +53,12 @@ export function parseReference(input: string, settings: PluginSettings): Referen
 			throw "Could not parse user input";
 		}
 		const startVerse = Number(chunk[1]);
-		const endVerse = chunk[2] !== undefined ? Number(chunk[2]) : startVerse;
-		return { book, chapter: Number(chapter), range: { startVerse, endVerse } };
+		const endVerse = chunk[3] !== undefined ? Number(chunk[3]) : startVerse;
+		const range: Range =
+			chunk[2] !== undefined
+				? { startVerse, endChapter: Number(chunk[2]), endVerse }
+				: { startVerse, endVerse };
+		return { book, chapter: Number(chapter), range };
 	});
 
 	return segments;
