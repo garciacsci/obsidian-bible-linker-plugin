@@ -84,35 +84,62 @@ export async function buildQuote(
 	};
 
 	const titleLinks: string[] = [];
-	const bodyParts: string[] = [];
+	const bodyLines: string[] = []; // each "> "-prefixed later; a book jump starts a new line
 	const invisibleLinks: string[] = [];
+	let prevBook: string | undefined;
+	let prevChapter: number | undefined;
 
 	for (let s = 0; s < reference.length; s++) {
-		const { book, chapter } = reference[s];
+		const { book, chapter, range } = reference[s];
 		const { items, span } = await citedVersesOf(reference[s]);
 		const first = items[0];
+		// A ";" segment may switch book or, within the same book, switch chapter.
+		const bookChanged = s > 0 && book.toLowerCase() !== prevBook;
+		const chapterChanged = s > 0 && !bookChanged && chapter !== prevChapter;
+		const fullName = expandBibleBookName(`${book} ${chapter}`);
 
-		// The first chunk carries the full book + chapter + notation; later chunks show their
-		// span alone, each link pointing at its own chunk's first verse.
+		// The title restates the full book name on the first segment and on every book change; a
+		// same-book chapter switch restates the chapter; a same-chapter chunk shows its span alone.
+		// Each link points at its own segment's first verse.
+		let label: string;
 		if (s === 0) {
 			const single = items.length === 1 && reference.length === 1;
 			const notation = single ? settings.oneVerseNotation : settings.multipleVersesNotation;
-			const label = `${expandBibleBookName(`${book} ${chapter}`)}${notation}${span}`;
-			titleLinks.push(`[[${first.fileName}#${first.anchor}|${label}]]`);
+			label = `${fullName}${notation}${span}`;
+		} else if (bookChanged) {
+			label = `${fullName}${settings.multipleVersesNotation}${span}`;
+		} else if (chapterChanged) {
+			label = `${chapter}${settings.multipleVersesNotation}${span}`;
 		} else {
-			titleLinks.push(`[[${first.fileName}#${first.anchor}|${span}]]`);
+			label = span;
+		}
+		titleLinks.push(`[[${first.fileName}#${first.anchor}|${label}]]`);
+
+		// A same-book chapter switch marks its first verse with a bold C:V so the new chapter can't
+		// be misread, mirroring the cross-chapter range jump; a book jump restates the book instead.
+		if (chapterChanged) {
+			items[0] = { ...first, marker: `**${chapter}:${range.startVerse}**` };
+		}
+		const bodyText = items.map((i) => i.marker + i.text).join(" ");
+		if (s === 0) {
+			bodyLines.push(bodyText);
+		} else if (bookChanged) {
+			bodyLines.push(`**${fullName}** ${bodyText}`);
+		} else {
+			// Same book: a spaced ellipsis marks the gap to the previous chunk (honest omission).
+			bodyLines[bodyLines.length - 1] += ` … ${bodyText}`;
 		}
 
-		bodyParts.push(items.map((i) => i.marker + i.text).join(" "));
-
-		// Every cited verse not already covered by its chunk-start link gets an invisible link.
+		// Every cited verse not already covered by its segment's link gets an invisible link.
 		for (let i = 1; i < items.length; i++) {
 			invisibleLinks.push(`[[${items[i].fileName}#${items[i].anchor}|]]`);
 		}
+
+		prevBook = book.toLowerCase();
+		prevChapter = range.endChapter ?? chapter;
 	}
 
-	// A spaced ellipsis marks each gap between non-contiguous chunks (honest omission).
-	const lines = [`> [!quote] ${titleLinks.join(",")}`, `> ${bodyParts.join(" … ")}`];
+	const lines = [`> [!quote] ${titleLinks.join(",")}`, ...bodyLines.map((l) => `> ${l}`)];
 	if (settings.useInvisibleLinks && invisibleLinks.length) {
 		lines.push(`> ${invisibleLinks.join("")}`);
 	}
