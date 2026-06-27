@@ -139,7 +139,12 @@ export async function buildQuote(
 		prevChapter = range.endChapter ?? chapter;
 	}
 
-	const lines = [`> [!quote] ${titleLinks.join(",")}`, ...bodyLines.map((l) => `> ${l}`)];
+	// The callout wrapper is configurable; an empty wrapper drops the callout token and falls
+	// back to plain "> " quote lines (the firstLinePrefix machinery, ADR-0001).
+	const titleLine = settings.quoteCallout
+		? `> ${settings.quoteCallout} ${titleLinks.join(",")}`
+		: `> ${titleLinks.join(",")}`;
+	const lines = [titleLine, ...bodyLines.map((l) => `> ${l}`)];
 	if (settings.useInvisibleLinks && invisibleLinks.length) {
 		lines.push(`> ${invisibleLinks.join("")}`);
 	}

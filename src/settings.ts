@@ -368,6 +368,22 @@ export class SettingsTab extends PluginSettingTab {
 			)
         // LINK -------------------------------------------------------------------------------------------------------------
 
+        containerEl.createEl("h4", { text: "Quote (text mode)" });
+        containerEl.createEl("p", { text: "Knobs for the inlined quote inserted when copying verse text." });
+
+        new Setting(containerEl)
+            .setName("Callout wrapper")
+            .setDesc('Callout used to wrap the quote, e.g. "[!quote]" or "[!note]". Leave empty to drop the callout and keep plain "> " quote lines.')
+            .addText((inputBox) =>
+                inputBox
+                    .setPlaceholder("[!quote]")
+                    .setValue(this.plugin.settings.quoteCallout)
+                    .onChange(async (value) => {
+                        this.plugin.settings.quoteCallout = value;
+                        await this.plugin.saveSettings();
+                    })
+            )
+
         containerEl.createEl("h1", { text: "Link Bible verses command" });
 
         containerEl.createEl("h4", { text: "File format" });

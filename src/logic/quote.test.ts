@@ -8,6 +8,11 @@ const settings = {
 	oneVerseNotation: ".",
 	multipleVersesNotation: ",",
 	useInvisibleLinks: true,
+	quoteCallout: "[!quote]",
+	verseNumberStyle: "superscript",
+	showOmissionEllipsis: true,
+	showChapterJumpMarker: true,
+	insertPartialOnUnresolved: false,
 } as PluginSettings;
 
 // A fake VerseSource holding known chapters, so the builder is tested without Obsidian.
@@ -248,5 +253,21 @@ describe("buildQuote — single-chapter callout", () => {
 		await expect(buildQuote(ref, fakeSource({ "Gen 1": gen1 }), settings, "")).rejects.toThrow(
 			/Genesis 99/
 		);
+	});
+});
+
+describe("buildQuote — configurable callout wrapper", () => {
+	it("uses a custom callout wrapper in place of [!quote]", async () => {
+		const custom = { ...settings, quoteCallout: "[!note]" } as PluginSettings;
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } }];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), custom, "");
+		expect(out).toBe("> [!note] [[Gen 1#1|Genesis 1.1]]\n> ¹In the beginning");
+	});
+
+	it("drops the callout token when the wrapper is empty, keeping the quote lines", async () => {
+		const none = { ...settings, quoteCallout: "" } as PluginSettings;
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } }];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), none, "");
+		expect(out).toBe("> [[Gen 1#1|Genesis 1.1]]\n> ¹In the beginning");
 	});
 });
