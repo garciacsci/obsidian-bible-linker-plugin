@@ -2,12 +2,10 @@ import { App, Modal, Setting } from "obsidian";
 import { PluginSettings } from "../main";
 import { createLinks } from "../logic/link-command";
 
-export enum LinkType {
-	Basic = "Basic",
-	Embedded = "Embedded",
-	Invisible = "Invisible",
-	FirstAndLast = "FirstAndLast",
-}
+// Re-exported so existing importers (settings, main, link-command) keep their import path while
+// the enum itself lives in an Obsidian-free module the pure link builder can also consume.
+export { LinkType } from "../logic/link-type";
+import { LinkType } from "../logic/link-type";
 
 /**
  * Modal that lets you insert bible reference by using Obsidian links
