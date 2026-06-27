@@ -91,9 +91,10 @@ const DEFAULT_SETTINGS: Partial<PluginSettings> = {
 	firstLinePrefix: "",
     insertSpace: true,
 
-    // Notation
-    oneVerseNotation: ".",
-    multipleVersesNotation: ",",
+    // Notation — colon by default for standard English scripture punctuation ("Gen 1:1"); still
+    // editable for anyone who prefers the legacy European "Gen 1,1" style.
+    oneVerseNotation: ":",
+    multipleVersesNotation: ":",
 
     // Quote (text mode) rendering & failure behavior
     quoteCallout: "[!quote]",

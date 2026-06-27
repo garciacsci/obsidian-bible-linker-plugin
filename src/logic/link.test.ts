@@ -8,8 +8,8 @@ import type { Chapter, VerseSource } from "./verse-source";
 const settings = {
 	linkSeparator: "#",
 	versePrefix: "",
-	oneVerseNotation: ".",
-	multipleVersesNotation: ",",
+	oneVerseNotation: ":",
+	multipleVersesNotation: ":",
 	shouldCapitalizeBookNames: true,
 } as PluginSettings;
 
@@ -51,7 +51,7 @@ describe("buildLinks — single contiguous range (legacy parity)", () => {
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } }];
 		const out = await buildLinks(ref, LinkType.FirstAndLast, settings, neverSource, "/");
 		expect(out).toEqual([
-			"[[Gen 1#1|Genesis 1,1]]",
+			"[[Gen 1#1|Genesis 1:1]]",
 			"[[Gen 1#2|]]",
 			"[[Gen 1#3|-3]]",
 		]);
@@ -60,7 +60,7 @@ describe("buildLinks — single contiguous range (legacy parity)", () => {
 	it("labels a single-verse FirstAndLast reference with the one-verse notation", async () => {
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 5, endVerse: 5 } }];
 		const out = await buildLinks(ref, LinkType.FirstAndLast, settings, neverSource, "/");
-		expect(out).toEqual(["[[Gen 1#5|Genesis 1.5]]"]);
+		expect(out).toEqual(["[[Gen 1#5|Genesis 1:5]]"]);
 	});
 
 	it("throws on a reversed range (begin verse greater than end verse), as the legacy command did", async () => {
@@ -95,10 +95,10 @@ describe("buildLinks — multi-segment references", () => {
 		];
 		const out = await buildLinks(ref, LinkType.FirstAndLast, settings, neverSource, "/");
 		expect(out).toEqual([
-			"[[Gen 1#1|Genesis 1,1]]",
+			"[[Gen 1#1|Genesis 1:1]]",
 			"[[Gen 1#2|]]",
 			"[[Gen 1#3|-3]]",
-			"[[Gen 1#10|Genesis 1,10]]",
+			"[[Gen 1#10|Genesis 1:10]]",
 			"[[Gen 1#11|]]",
 			"[[Gen 1#12|-12]]",
 		]);
@@ -119,7 +119,7 @@ describe("buildLinks — multi-segment references", () => {
 			{ book: "Rom", chapter: 5, range: { startVerse: 8, endVerse: 8 } },
 		];
 		const out = await buildLinks(ref, LinkType.FirstAndLast, settings, neverSource, "/");
-		expect(out).toEqual(["[[John 3#16|John 3.16]]", "[[Rom 5#8|Romans 5.8]]"]);
+		expect(out).toEqual(["[[John 3#16|John 3:16]]", "[[Rom 5#8|Romans 5:8]]"]);
 	});
 });
 
@@ -174,7 +174,7 @@ describe("buildLinks — cross-chapter range", () => {
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 30, endChapter: 2, endVerse: 2 } }];
 		const out = await buildLinks(ref, LinkType.FirstAndLast, settings, fakeSource(chapters), "/");
 		expect(out).toEqual([
-			"[[Gen 1#30|Genesis 1,30]]",
+			"[[Gen 1#30|Genesis 1:30]]",
 			"[[Gen 1#31|]]",
 			"[[Gen 2#1|]]",
 			"[[Gen 2#2|-2]]",
