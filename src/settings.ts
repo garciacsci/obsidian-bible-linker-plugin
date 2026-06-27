@@ -490,6 +490,7 @@ export class SettingsTab extends PluginSettingTab {
                 dropdown.addOption(LinkType.Basic, LinkType.Basic)
                 dropdown.addOption(LinkType.Embedded, LinkType.Embedded)
 				dropdown.addOption(LinkType.FirstAndLast, "Show First & Last");
+                dropdown.addOption(LinkType.TitleStyle, "Title style")
                 dropdown.addOption(LinkType.Invisible, LinkType.Invisible)
                 dropdown.setValue(this.plugin.settings.linkTypePreset)
                 dropdown.onChange(async (value) => {
