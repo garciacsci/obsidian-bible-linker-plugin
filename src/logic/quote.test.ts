@@ -5,8 +5,8 @@ import type { Chapter, VerseSource } from "./verse-source";
 
 // Only the knobs buildQuote reads; the rest of PluginSettings is irrelevant to the pure builder.
 const settings = {
-	oneVerseNotation: ".",
-	multipleVersesNotation: ",",
+	oneVerseNotation: ":",
+	multipleVersesNotation: ":",
 	useInvisibleLinks: true,
 	quoteCallout: "[!quote]",
 	verseNumberStyle: "superscript",
@@ -40,7 +40,7 @@ describe("buildQuote — single-chapter callout", () => {
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } }];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), settings, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#1|Genesis 1,1-3]]\n" +
+			"> [!quote] [[Gen 1#1|Genesis 1:1-3]]\n" +
 				"> ¹In the beginning ²Now the earth ³And God said\n" +
 				"> [[Gen 1#2|]][[Gen 1#3|]]"
 		);
@@ -50,7 +50,7 @@ describe("buildQuote — single-chapter callout", () => {
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } }];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), settings, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#1|Genesis 1.1]]\n" + "> ¹In the beginning"
+			"> [!quote] [[Gen 1#1|Genesis 1:1]]\n" + "> ¹In the beginning"
 		);
 	});
 
@@ -68,7 +68,7 @@ describe("buildQuote — single-chapter callout", () => {
 		const ref = [{ book: "1 Cor", chapter: 13, range: { startVerse: 4, endVerse: 5 } }];
 		const out = await buildQuote(ref, fakeSource({ "1 Cor 13": oneCor13 }), settings, "");
 		expect(out).toBe(
-			"> [!quote] [[1 Cor 13#4|1 Corinthians 13,4-5]]\n" +
+			"> [!quote] [[1 Cor 13#4|1 Corinthians 13:4-5]]\n" +
 				"> ⁴Love is patient ⁵it does not envy\n" +
 				"> [[1 Cor 13#5|]]"
 		);
@@ -79,7 +79,7 @@ describe("buildQuote — single-chapter callout", () => {
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } }];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), noInvisible, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#1|Genesis 1,1-3]]\n" +
+			"> [!quote] [[Gen 1#1|Genesis 1:1-3]]\n" +
 				"> ¹In the beginning ²Now the earth ³And God said"
 		);
 	});
@@ -92,7 +92,7 @@ describe("buildQuote — single-chapter callout", () => {
 		const ref = [{ book: "Ps", chapter: 23, range: { startVerse: 1, endVerse: 1 } }];
 		const out = await buildQuote(ref, fakeSource({ "Ps 23": ps23 }), settings, "");
 		expect(out).toBe(
-			"> [!quote] [[Ps 23#1|Psalms 23.1]]\n" + "> ¹The Lord is my shepherd I shall not want"
+			"> [!quote] [[Ps 23#1|Psalms 23:1]]\n" + "> ¹The Lord is my shepherd I shall not want"
 		);
 	});
 
@@ -100,7 +100,7 @@ describe("buildQuote — single-chapter callout", () => {
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 5 } }];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), settings, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#1|Genesis 1,1-3]]\n" +
+			"> [!quote] [[Gen 1#1|Genesis 1:1-3]]\n" +
 				"> ¹In the beginning ²Now the earth ³And God said\n" +
 				"> [[Gen 1#2|]][[Gen 1#3|]]"
 		);
@@ -121,7 +121,7 @@ describe("buildQuote — single-chapter callout", () => {
 		];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1full }), settings, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#1|Genesis 1,1-3]],[[Gen 1#10|10-12]]\n" +
+			"> [!quote] [[Gen 1#1|Genesis 1:1-3]], [[Gen 1#10|10-12]]\n" +
 				"> ¹v1 ²v2 ³v3 … ¹⁰v10 ¹¹v11 ¹²v12\n" +
 				"> [[Gen 1#2|]][[Gen 1#3|]][[Gen 1#11|]][[Gen 1#12|]]"
 		);
@@ -152,7 +152,7 @@ describe("buildQuote — single-chapter callout", () => {
 			""
 		);
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#27|Genesis 1,27-2:2]]\n" +
+			"> [!quote] [[Gen 1#27|Genesis 1:27-2:2]]\n" +
 				"> ²⁷v27 ²⁸v28 ²⁹v29 ³⁰v30 ³¹v31 **2:1**c2v1 ²c2v2\n" +
 				"> [[Gen 1#28|]][[Gen 1#29|]][[Gen 1#30|]][[Gen 1#31|]][[Gen 2#1|]][[Gen 2#2|]]"
 		);
@@ -183,7 +183,7 @@ describe("buildQuote — single-chapter callout", () => {
 			""
 		);
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#30|Genesis 1,30-2:3]]\n" +
+			"> [!quote] [[Gen 1#30|Genesis 1:30-2:3]]\n" +
 				"> ³⁰v30 ³¹v31 **2:1**c2v1 ²c2v2 ³c2v3\n" +
 				"> [[Gen 1#31|]][[Gen 2#1|]][[Gen 2#2|]][[Gen 2#3|]]"
 		);
@@ -212,8 +212,9 @@ describe("buildQuote — single-chapter callout", () => {
 		];
 		const out = await buildQuote(ref, fakeSource({ "John 3": john3, "Rom 5": rom5 }), settings, "");
 		expect(out).toBe(
-			"> [!quote] [[John 3#16|John 3,16]],[[Rom 5#8|Romans 5,8]]\n" +
+			"> [!quote] [[John 3#16|John 3:16]], [[Rom 5#8|Romans 5:8]]\n" +
 				"> ¹⁶j16\n" +
+				">\n" +
 				"> **Romans 5** ⁸r8"
 		);
 	});
@@ -242,8 +243,9 @@ describe("buildQuote — single-chapter callout", () => {
 		];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1full, "Gen 3": gen3 }), settings, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#1|Genesis 1,1-3]],[[Gen 1#10|10-12]],[[Gen 3#15|3,15]]\n" +
-				"> ¹v1 ²v2 ³v3 … ¹⁰v10 ¹¹v11 ¹²v12 … **3:15**c3v15\n" +
+			"> [!quote] [[Gen 1#1|Genesis 1:1-3]], [[Gen 1#10|10-12]], [[Gen 3#15|3:15]]\n" +
+				"> ¹v1 ²v2 ³v3 … ¹⁰v10 ¹¹v11 ¹²v12\n" +
+				"> **3:15**c3v15\n" +
 				"> [[Gen 1#2|]][[Gen 1#3|]][[Gen 1#11|]][[Gen 1#12|]]"
 		);
 	});
@@ -261,14 +263,14 @@ describe("buildQuote — configurable callout wrapper", () => {
 		const custom = { ...settings, quoteCallout: "[!note]" } as PluginSettings;
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } }];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), custom, "");
-		expect(out).toBe("> [!note] [[Gen 1#1|Genesis 1.1]]\n> ¹In the beginning");
+		expect(out).toBe("> [!note] [[Gen 1#1|Genesis 1:1]]\n> ¹In the beginning");
 	});
 
 	it("drops the callout token when the wrapper is empty, keeping the quote lines", async () => {
 		const none = { ...settings, quoteCallout: "" } as PluginSettings;
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1 } }];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), none, "");
-		expect(out).toBe("> [[Gen 1#1|Genesis 1.1]]\n> ¹In the beginning");
+		expect(out).toBe("> [[Gen 1#1|Genesis 1:1]]\n> ¹In the beginning");
 	});
 });
 
@@ -286,7 +288,7 @@ describe("buildQuote — omission ellipsis toggle", () => {
 		];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1full }), off, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#1|Genesis 1,1-3]],[[Gen 1#10|10-12]]\n" +
+			"> [!quote] [[Gen 1#1|Genesis 1:1-3]], [[Gen 1#10|10-12]]\n" +
 				"> ¹v1 ²v2 ³v3 ¹⁰v10 ¹¹v11 ¹²v12\n" +
 				"> [[Gen 1#2|]][[Gen 1#3|]][[Gen 1#11|]][[Gen 1#12|]]"
 		);
@@ -308,7 +310,7 @@ describe("buildQuote — chapter-jump marker toggle", () => {
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 27, endChapter: 2, endVerse: 2 } }];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1full, "Gen 2": gen2 }), off, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#27|Genesis 1,27-2:2]]\n" +
+			"> [!quote] [[Gen 1#27|Genesis 1:27-2:2]]\n" +
 				"> ²⁷v27 ²⁸v28 ²⁹v29 ³⁰v30 ³¹v31 ¹c2v1 ²c2v2\n" +
 				"> [[Gen 1#28|]][[Gen 1#29|]][[Gen 1#30|]][[Gen 1#31|]][[Gen 2#1|]][[Gen 2#2|]]"
 		);
@@ -326,8 +328,9 @@ describe("buildQuote — chapter-jump marker toggle", () => {
 		];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1full, "Gen 3": gen3 }), off, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#1|Genesis 1,1]],[[Gen 3#15|3,15]]\n" +
-				"> ¹v1 … ¹⁵c3v15"
+			"> [!quote] [[Gen 1#1|Genesis 1:1]], [[Gen 3#15|3:15]]\n" +
+				"> ¹v1\n" +
+				"> ¹⁵c3v15"
 		);
 	});
 });
@@ -341,7 +344,7 @@ describe("buildQuote — abort vs partial on an unresolved segment", () => {
 		];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), partial, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#1|Genesis 1,1-3]]\n" +
+			"> [!quote] [[Gen 1#1|Genesis 1:1-3]]\n" +
 				"> ¹In the beginning ²Now the earth ³And God said\n" +
 				"> **Could not find Genesis 99**\n" +
 				"> [[Gen 1#2|]][[Gen 1#3|]]"
@@ -355,7 +358,7 @@ describe("buildQuote — verse-number style", () => {
 		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 3 } }];
 		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1 }), plain, "");
 		expect(out).toBe(
-			"> [!quote] [[Gen 1#1|Genesis 1,1-3]]\n" +
+			"> [!quote] [[Gen 1#1|Genesis 1:1-3]]\n" +
 				"> 1In the beginning 2Now the earth 3And God said\n" +
 				"> [[Gen 1#2|]][[Gen 1#3|]]"
 		);

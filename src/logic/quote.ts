@@ -12,6 +12,7 @@ import type { Reference } from "./reference";
 import type { Chapter, Verse, VerseSource } from "./verse-source";
 import expandBibleBookName from "../utils/expandedBookName";
 import { numbersToSuperscript } from "../utils/functions";
+import { buildQuoteTitleLinks, type TitleSegment } from "./segment-label";
 
 /**
  * Builds the quote markdown for a reference. Pure given the port: throws (never shows a
@@ -90,11 +91,15 @@ export async function buildQuote(
 		return { items, span };
 	};
 
-	const titleLinks: string[] = [];
-	const bodyLines: string[] = []; // each "> "-prefixed later; a book jump starts a new line
+	// Resolved segments feeding the title line; the label rules live in the shared helper. Only
+	// resolved segments are collected, so partial mode (an unresolved segment skipped below) drops
+	// out of the title exactly as before.
+	const titleSegments: TitleSegment[] = [];
+	const bodyLines: string[] = []; // each "> "-prefixed later; "" renders as a bare ">" blank line
 	const invisibleLinks: string[] = [];
 	let prevBook: string | undefined;
 	let prevChapter: number | undefined;
+	let singleVerseReference = false;
 
 	for (let s = 0; s < reference.length; s++) {
 		const { book, chapter, range } = reference[s];
@@ -115,22 +120,20 @@ export async function buildQuote(
 		const chapterChanged = s > 0 && !bookChanged && chapter !== prevChapter;
 		const fullName = expandBibleBookName(`${book} ${chapter}`);
 
-		// The title restates the full book name on the first segment and on every book change; a
-		// same-book chapter switch restates the chapter; a same-chapter chunk shows its span alone.
-		// Each link points at its own segment's first verse.
-		let label: string;
+		// Collect this resolved segment for the title; the shared helper applies the label rules
+		// (full book name on first/book-change, chapter on a same-book chapter switch, span alone
+		// for a same-chapter chunk). Each link points at its own segment's first verse.
 		if (s === 0) {
-			const single = items.length === 1 && reference.length === 1;
-			const notation = single ? settings.oneVerseNotation : settings.multipleVersesNotation;
-			label = `${fullName}${notation}${span}`;
-		} else if (bookChanged) {
-			label = `${fullName}${settings.multipleVersesNotation}${span}`;
-		} else if (chapterChanged) {
-			label = `${chapter}${settings.multipleVersesNotation}${span}`;
-		} else {
-			label = span;
+			singleVerseReference = items.length === 1 && reference.length === 1;
 		}
-		titleLinks.push(`[[${first.fileName}#${first.anchor}|${label}]]`);
+		titleSegments.push({
+			book,
+			chapter,
+			endChapter: range.endChapter,
+			span,
+			fileName: first.fileName,
+			anchor: first.anchor,
+		});
 
 		// A same-book chapter switch marks its first verse with a bold C:V so the new chapter can't
 		// be misread, mirroring the cross-chapter range jump; a book jump restates the book instead.
@@ -141,10 +144,16 @@ export async function buildQuote(
 		if (s === 0) {
 			bodyLines.push(bodyText);
 		} else if (bookChanged) {
+			// A book jump is separated from the prior book by a blank line, then restates the book.
+			bodyLines.push("");
 			bodyLines.push(`**${fullName}** ${bodyText}`);
+		} else if (chapterChanged) {
+			// A same-book chapter jump starts its own line (no leading ellipsis); its bold C:V
+			// marker, already applied above, makes the new chapter unambiguous.
+			bodyLines.push(bodyText);
 		} else {
-			// Same book: a spaced ellipsis marks the gap to the previous chunk (honest omission);
-			// when the ellipsis is off, the chunks just run together with a plain space.
+			// Same book and chapter: a spaced ellipsis marks the gap to the previous chunk (honest
+			// omission); when the ellipsis is off, the chunks just run together with a plain space.
 			const gap = settings.showOmissionEllipsis ? " … " : " ";
 			bodyLines[bodyLines.length - 1] += `${gap}${bodyText}`;
 		}
@@ -160,10 +169,13 @@ export async function buildQuote(
 
 	// The callout wrapper is configurable; an empty wrapper drops the callout token and falls
 	// back to plain "> " quote lines (the firstLinePrefix machinery, ADR-0001).
+	const titleLinks = buildQuoteTitleLinks(titleSegments, singleVerseReference, settings);
 	const titleLine = settings.quoteCallout
-		? `> ${settings.quoteCallout} ${titleLinks.join(",")}`
-		: `> ${titleLinks.join(",")}`;
-	const lines = [titleLine, ...bodyLines.map((l) => `> ${l}`)];
+		? `> ${settings.quoteCallout} ${titleLinks}`
+		: `> ${titleLinks}`;
+	// A blank body line (a book-jump separator) renders as a bare ">" so the callout stays
+	// contiguous without trailing whitespace; content lines keep their "> " prefix.
+	const lines = [titleLine, ...bodyLines.map((l) => (l === "" ? ">" : `> ${l}`))];
 	if (settings.useInvisibleLinks && invisibleLinks.length) {
 		lines.push(`> ${invisibleLinks.join("")}`);
 	}
