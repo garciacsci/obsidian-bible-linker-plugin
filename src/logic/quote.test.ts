@@ -122,6 +122,68 @@ describe("buildQuote — single-chapter callout", () => {
 		);
 	});
 
+	it("reads a cross-chapter range across both chapters, marking the jump with a bold C:V", async () => {
+		const gen1full: Chapter = {
+			fileName: "Gen 1",
+			verses: Array.from({ length: 31 }, (_, i) => ({
+				number: i + 1,
+				text: `v${i + 1}`,
+				anchor: `${i + 1}`,
+			})),
+		};
+		const gen2: Chapter = {
+			fileName: "Gen 2",
+			verses: Array.from({ length: 3 }, (_, i) => ({
+				number: i + 1,
+				text: `c2v${i + 1}`,
+				anchor: `${i + 1}`,
+			})),
+		};
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 27, endChapter: 2, endVerse: 2 } }];
+		const out = await buildQuote(
+			ref,
+			fakeSource({ "Gen 1": gen1full, "Gen 2": gen2 }),
+			settings,
+			""
+		);
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#27|Genesis 1,27-2:2]]\n" +
+				"> ²⁷v27 ²⁸v28 ²⁹v29 ³⁰v30 ³¹v31 **2:1**c2v1 ²c2v2\n" +
+				"> [[Gen 1#28|]][[Gen 1#29|]][[Gen 1#30|]][[Gen 1#31|]][[Gen 2#1|]][[Gen 2#2|]]"
+		);
+	});
+
+	it("clamps a cross-chapter end past the end chapter's last verse to its last verse", async () => {
+		const gen1full: Chapter = {
+			fileName: "Gen 1",
+			verses: Array.from({ length: 31 }, (_, i) => ({
+				number: i + 1,
+				text: `v${i + 1}`,
+				anchor: `${i + 1}`,
+			})),
+		};
+		const gen2: Chapter = {
+			fileName: "Gen 2",
+			verses: Array.from({ length: 3 }, (_, i) => ({
+				number: i + 1,
+				text: `c2v${i + 1}`,
+				anchor: `${i + 1}`,
+			})),
+		};
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 30, endChapter: 2, endVerse: 9 } }];
+		const out = await buildQuote(
+			ref,
+			fakeSource({ "Gen 1": gen1full, "Gen 2": gen2 }),
+			settings,
+			""
+		);
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#30|Genesis 1,30-2:3]]\n" +
+				"> ³⁰v30 ³¹v31 **2:1**c2v1 ²c2v2 ³c2v3\n" +
+				"> [[Gen 1#31|]][[Gen 2#1|]][[Gen 2#2|]][[Gen 2#3|]]"
+		);
+	});
+
 	it("aborts by throwing an error naming the segment when the chapter cannot be resolved", async () => {
 		const ref = [{ book: "Gen", chapter: 99, range: { startVerse: 1, endVerse: 3 } }];
 		await expect(buildQuote(ref, fakeSource({ "Gen 1": gen1 }), settings, "")).rejects.toThrow(
