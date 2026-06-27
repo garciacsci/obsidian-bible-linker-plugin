@@ -1,10 +1,11 @@
 import {App, Notice} from "obsidian";
-import {LinkType} from "../modals/link-verse-modal";
+import {LinkType} from "../logic/link-type";
 import {PluginSettings} from "../main";
 import {multipleChaptersRegEx} from "../utils/regexes";
 import {capitalize, getFileByFilename, parseUserBookInput,} from "./common";
 import {parseReference} from "./reference";
-import expandBibleBookName from "../utils/expandedBookName";
+import {buildLinks} from "./link";
+import {ObsidianVerseSource} from "./obsidian-verse-source";
 
 /**
  * Converts biblical reference to links to given verses or books
@@ -42,7 +43,9 @@ export async function createLinks(
 }
 
 /**
- * Creates copy command output when linking multiple verses
+ * Thin Obsidian-facing wrapper: parses the reference, verifies the file (when asked), delegates
+ * link assembly to the pure buildLinks across every segment, and lays the links out per the
+ * useNewLine toggle. All grammar (multi-chunk, cross-chapter, cross-book) lives in buildLinks.
  */
 async function getLinksForVerses(
 	app: App,
@@ -51,20 +54,20 @@ async function getLinksForVerses(
 	useNewLine: boolean,
 	settings: PluginSettings
 ) {
-	let bookAndChapter: string, beginVerse: number, endVerse: number;
+	let reference;
 	try {
-		const [{ book, chapter, range }] = parseReference(userInput, settings);
-		bookAndChapter = `${book} ${chapter}`;
-		beginVerse = range.startVerse;
-		endVerse = range.endVerse;
+		reference = parseReference(userInput, settings);
 	} catch (err) {
 		new Notice(`Wrong format "${userInput}"`);
 		throw err;
 	}
-	if (settings.shouldCapitalizeBookNames) {
-		bookAndChapter = capitalize(bookAndChapter); // For output consistency
-	}
+
 	if (settings.verifyFilesWhenLinking) {
+		const { book, chapter } = reference[0];
+		let bookAndChapter = `${book} ${chapter}`;
+		if (settings.shouldCapitalizeBookNames) {
+			bookAndChapter = capitalize(bookAndChapter); // For output consistency
+		}
 		const { fileName, tFile } = getFileByFilename(app, bookAndChapter, "/", settings);
 		if (!tFile) {
 			new Notice(
@@ -74,52 +77,18 @@ async function getLinksForVerses(
 		}
 	}
 
-	if (beginVerse > endVerse) {
-		new Notice("Begin verse is bigger than end verse");
-		throw "Begin verse is bigger than end verse";
+	// The Link command targets the vault's "Book Chapter" files directly (no translation folder),
+	// so the source resolves files the same way the legacy command did: path "/".
+	const verseSource = new ObsidianVerseSource(app, settings);
+	let links: string[];
+	try {
+		links = await buildLinks(reference, linkType, settings, verseSource, "/");
+	} catch (err) {
+		new Notice(typeof err === "string" ? err : `${err}`);
+		throw err;
 	}
 
-	let res = "";
-	for (let i = beginVerse; i <= endVerse; i++) {
-		const beginning = getLinkBeginning(i, beginVerse, endVerse, linkType);
-		const ending = getLinkEnding(i, beginVerse, endVerse, linkType, bookAndChapter, settings);
-
-		res += `${beginning}[[${bookAndChapter}${settings.linkSeparator}${settings.versePrefix}${i}${ending}]]`;
-		if (useNewLine) {
-			res += "\n";
-		}
-	}
-	return res;
-}
-
-function getLinkBeginning(currentVerse: number, beginVerse: number, endVerse: number, linkType: LinkType): string {
-	switch (linkType) {
-		case LinkType.Embedded:
-			return "!"
-		default:
-			return ""
-	}
-}
-
-function getLinkEnding(currentVerse: number, beginVerse: number, endVerse: number, linkType: LinkType, bookAndChapter: string, settings: PluginSettings): string {
-	switch (linkType){
-		case LinkType.Invisible:
-			return "|"
-		case LinkType.FirstAndLast: {
-			const displayBook = expandBibleBookName(bookAndChapter); // show fully-qualified book name in alt text
-			if (beginVerse === endVerse) {
-				return `|${displayBook}${settings.oneVerseNotation}${currentVerse}`
-			} else if (currentVerse === beginVerse) {
-				return `|${displayBook}${settings.multipleVersesNotation}${currentVerse}`
-			}
-			if (currentVerse === endVerse) {
-				return `|-${currentVerse}`
-			}
-			return "|"; // links between first and last verse are invisible
-		}
-		default:
-			return ""
-	}
+	return useNewLine ? links.map((link) => `${link}\n`).join("") : links.join("");
 }
 
 
