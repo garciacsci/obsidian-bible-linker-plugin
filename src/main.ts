@@ -8,6 +8,9 @@ export interface PluginSettings {
     // Functional
     verseOffset: number;
     verseHeadingLevel?: number;
+    // Heading level of section/pericope titles (e.g. 2 for "## "), letting the "f" suffix stop at
+    // the next section. Unset ⇒ no sections, so "f" behaves like "ff" (runs to the chapter end).
+    sectionHeadingLevel?: number;
 
     // Inserted prefixes/postfixes
     prefix: string;
@@ -74,6 +77,7 @@ const DEFAULT_SETTINGS: Partial<PluginSettings> = {
     // Functional
     verseOffset: 0,
     verseHeadingLevel: undefined,
+    sectionHeadingLevel: undefined,
 
     // Inserted prefixes/postfixes
     prefix: "",

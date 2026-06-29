@@ -12,8 +12,12 @@ export type Verse = { number: number; text: string; anchor: string };
  * A resolved chapter file: its link-target name (as actually found on disk, e.g. "Gen 1"
  * or the OBSK "Gen-01") plus the verses it holds. The fileName is what links point at, so
  * the builders can target the same file the text was read from.
+ *
+ * `sectionStarts` lists the verse numbers at which a section ("## " pericope heading) begins,
+ * so an open-ended "f" range can stop at the next section. Absent/empty when the chapter file
+ * marks no sections (or the vault has not configured a section heading level).
  */
-export type Chapter = { fileName: string; verses: Verse[] };
+export type Chapter = { fileName: string; verses: Verse[]; sectionStarts?: number[] };
 
 /** Yields a resolved chapter file, hiding how it is named, stored, and read. */
 export interface VerseSource {
@@ -23,8 +27,16 @@ export interface VerseSource {
 /** The slice of an Obsidian HeadingCache the extractor needs (kept Obsidian-free). */
 export type HeadingInfo = { heading: string; level: number; line: number };
 
-/** Knobs the source applies when mapping a chapter file's headings to verses. */
-export type ExtractOptions = { verseHeadingLevel: number; verseOffset: number };
+/**
+ * Knobs the source applies when mapping a chapter file's headings to verses.
+ * `sectionHeadingLevel` (optional) is the heading level used for section/pericope titles; when
+ * unset, the chapter is treated as one section (so "f" behaves like "ff", running to chapter end).
+ */
+export type ExtractOptions = {
+	verseHeadingLevel: number;
+	verseOffset: number;
+	sectionHeadingLevel?: number;
+};
 
 /**
  * Turns a chapter file's raw lines and headings into an ordered list of verses.
@@ -57,6 +69,50 @@ export function extractChapterVerses(
 		});
 	}
 	return verses;
+}
+
+/**
+ * Finds the verse numbers at which a section begins — one per section heading (a heading at
+ * `sectionHeadingLevel`), namely the number of the first verse that follows it. Assumes the verse
+ * headings are filtered out by `verseHeadingLevel` so section headings are distinguishable; returns
+ * an empty list when no section level is configured.
+ *
+ * Uses the same verse↔heading mapping as extractChapterVerses (verse `n` lives at heading index
+ * `n + verseOffset`), inverted to turn a heading index back into its verse number.
+ */
+export function extractSectionStarts(headings: HeadingInfo[], options: ExtractOptions): number[] {
+	const { verseHeadingLevel, verseOffset, sectionHeadingLevel } = options;
+	if (!sectionHeadingLevel) {
+		return [];
+	}
+	const verseHeadings = headings.filter(
+		(heading) => !verseHeadingLevel || heading.level === verseHeadingLevel
+	);
+	const nrOfVerses = verseHeadings.length - 1 - verseOffset;
+
+	const starts: number[] = [];
+	for (const heading of headings) {
+		if (heading.level !== sectionHeadingLevel) {
+			continue;
+		}
+		// The section introduces the first verse heading that comes after it.
+		const index = verseHeadings.findIndex((verse) => verse.line > heading.line);
+		const number = index - verseOffset;
+		if (index !== -1 && number >= 1 && number <= nrOfVerses) {
+			starts.push(number);
+		}
+	}
+	return starts;
+}
+
+/**
+ * The last verse of the section that contains `startVerse`: the verse just before the next section
+ * begins, or the chapter's last verse when no later section follows (or none are marked). This is
+ * what an open-ended "f" range resolves its end verse to.
+ */
+export function sectionEndVerse(chapter: Chapter, startVerse: number): number {
+	const next = (chapter.sectionStarts ?? []).find((verse) => verse > startVerse);
+	return next !== undefined ? next - 1 : chapter.verses.length;
 }
 
 /**

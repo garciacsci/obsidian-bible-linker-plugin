@@ -9,7 +9,7 @@
  */
 import type { PluginSettings } from "../main";
 import type { Reference } from "./reference";
-import type { Chapter, Verse, VerseSource } from "./verse-source";
+import { sectionEndVerse, type Chapter, type Verse, type VerseSource } from "./verse-source";
 import expandBibleBookName from "../utils/expandedBookName";
 import { numbersToSuperscript } from "../utils/functions";
 import { buildQuoteTitleLinks, type TitleSegment } from "./segment-label";
@@ -82,10 +82,13 @@ export async function buildQuote(
 			return { items, span: `${startVerse}-${range.endChapter}:${endVerse}` };
 		}
 
-		// An open-ended "ff" range runs to the chapter's last verse; otherwise an end verse past the
-		// chapter clamps to its last verse, matching the legacy Copy command.
+		// An open-ended "ff" range runs to the chapter's last verse and "f" to the end of the start
+		// verse's section; otherwise an end verse past the chapter clamps to its last verse, matching
+		// the legacy Copy command.
 		const endVerse = range.toChapterEnd
 			? start.verses.length
+			: range.toSectionEnd
+			? sectionEndVerse(start, startVerse)
 			: Math.min(range.endVerse, start.verses.length);
 		for (let v = startVerse; v <= endVerse; v++) {
 			items.push(cite(start.fileName, start.verses[v - 1], verseMarker(v)));

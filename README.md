@@ -38,8 +38,9 @@ The reference box accepts:
 - A range crossing a chapter boundary: `Gen 1:27-2:2`
 - Multiple references separated by `;`, each restating its book (`John 3:16; Rom 5:8`) or just switching chapter within the same book (`Heb 11:1-3; 12:1-6`)
 - An open-ended **`ff`** suffix — *"and the following verses"* — links from the start verse to the **end of the chapter**: `John 3:16ff` → `John 3:16-36`. The dashed and spaced forms (`16-ff`, `16 ff`) work too.
+- An open-ended **`f`** suffix — *"and the following verses, to the end of the section"* — links from the start verse to the verse just before the next section heading: `John 3:16f`. The dashed and spaced forms (`16-f`, `16 f`) work too.
 
-> The single **`f`** suffix (*"and the following verse"*, i.e. to the end of the *section/pericope*) is not supported yet — it needs your bible files to mark section boundaries as headings.
+> The **`f`** suffix needs your bible files to mark section/pericope titles as headings. Set **`sectionHeadingLevel`** (e.g. `2` for `## ` titles) so the plugin knows which headings begin a new section. When it is unset — or the start verse is already in the chapter's last section — **`f`** falls back to the end of the chapter (identical to **`ff`**).
 
 ### Pros of this approach
 - More verses can be displayed as one block of text, which is more visually pleasing than multiple link blocks after each other. 

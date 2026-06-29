@@ -148,6 +148,45 @@ describe("buildLinks — open-ended 'ff' range", () => {
 	});
 });
 
+describe("buildLinks — open-ended 'f' (section) range", () => {
+	// A 10-verse Gen 1 split into sections starting at verses 1 and 6.
+	const chapters = {
+		"Gen 1": {
+			fileName: "Gen 1",
+			verses: Array.from({ length: 10 }, (_, i) => ({
+				number: i + 1,
+				text: `v${i + 1}`,
+				anchor: `${i + 1}`,
+			})),
+			sectionStarts: [1, 6],
+		} as Chapter,
+	};
+
+	it("runs from the start verse to the verse before the next section", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 3, endVerse: 3, toSectionEnd: true } }];
+		const out = await buildLinks(ref, LinkType.Basic, settings, fakeSource(chapters), "/");
+		expect(out).toEqual(["[[Gen 1#3]]", "[[Gen 1#4]]", "[[Gen 1#5]]"]);
+	});
+
+	it("runs to the chapter end when the start verse is in the last section", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 6, endVerse: 6, toSectionEnd: true } }];
+		const out = await buildLinks(ref, LinkType.Basic, settings, fakeSource(chapters), "/");
+		expect(out).toEqual(["[[Gen 1#6]]", "[[Gen 1#7]]", "[[Gen 1#8]]", "[[Gen 1#9]]", "[[Gen 1#10]]"]);
+	});
+
+	it("labels FirstAndLast across the resolved section span", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 3, endVerse: 3, toSectionEnd: true } }];
+		const out = await buildLinks(ref, LinkType.FirstAndLast, settings, fakeSource(chapters), "/");
+		expect(out).toEqual(["[[Gen 1#3|Genesis 1:3]]", "[[Gen 1#4|]]", "[[Gen 1#5|-5]]"]);
+	});
+
+	it("labels a Title-style section range with the resolved span", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 3, endVerse: 3, toSectionEnd: true } }];
+		const out = await buildLinks(ref, LinkType.TitleStyle, settings, fakeSource(chapters), "/");
+		expect(out).toEqual(["[[Gen 1#3|Genesis 1:3-5]][[Gen 1#4|]][[Gen 1#5|]]"]);
+	});
+});
+
 describe("buildLinks — cross-chapter range", () => {
 	// A 31-verse Gen 1 and a short Gen 2, so the enumeration must read each chapter's verse count.
 	const chapters = {

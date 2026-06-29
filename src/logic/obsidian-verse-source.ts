@@ -7,7 +7,14 @@
 import { App } from "obsidian";
 import type { PluginSettings } from "../main";
 import { capitalize, getFileByFilename } from "./common";
-import { Chapter, extractChapterVerses, HeadingInfo, VerseSource } from "./verse-source";
+import {
+	Chapter,
+	extractChapterVerses,
+	extractSectionStarts,
+	ExtractOptions,
+	HeadingInfo,
+	VerseSource,
+} from "./verse-source";
 
 export class ObsidianVerseSource implements VerseSource {
 	constructor(private app: App, private settings: PluginSettings) {}
@@ -28,10 +35,13 @@ export class ObsidianVerseSource implements VerseSource {
 			line: heading.position.start.line,
 		}));
 
-		const verses = extractChapterVerses(lines, headings, {
+		const options: ExtractOptions = {
 			verseHeadingLevel: this.settings.verseHeadingLevel,
 			verseOffset: this.settings.verseOffset,
-		});
-		return { fileName, verses };
+			sectionHeadingLevel: this.settings.sectionHeadingLevel,
+		};
+		const verses = extractChapterVerses(lines, headings, options);
+		const sectionStarts = extractSectionStarts(headings, options);
+		return { fileName, verses, sectionStarts };
 	}
 }

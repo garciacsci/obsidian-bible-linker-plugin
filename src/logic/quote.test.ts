@@ -352,6 +352,31 @@ describe("buildQuote — abort vs partial on an unresolved segment", () => {
 	});
 });
 
+describe("buildQuote — open-ended 'f' (section) range", () => {
+	// Gen 1 with five verses split into sections starting at verses 1 and 3.
+	const gen1Sections: Chapter = {
+		fileName: "Gen 1",
+		verses: [
+			{ number: 1, text: "In the beginning", anchor: "1" },
+			{ number: 2, text: "Now the earth", anchor: "2" },
+			{ number: 3, text: "And God said", anchor: "3" },
+			{ number: 4, text: "and there was light", anchor: "4" },
+			{ number: 5, text: "and it was good", anchor: "5" },
+		],
+		sectionStarts: [1, 3],
+	};
+
+	it("quotes from the start verse to the end of its section", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 1, endVerse: 1, toSectionEnd: true } }];
+		const out = await buildQuote(ref, fakeSource({ "Gen 1": gen1Sections }), settings, "");
+		expect(out).toBe(
+			"> [!quote] [[Gen 1#1|Genesis 1:1-2]]\n" +
+				"> ¹In the beginning ²Now the earth\n" +
+				"> [[Gen 1#2|]]"
+		);
+	});
+});
+
 describe("buildQuote — verse-number style", () => {
 	it("renders plain arabic verse numbers when the style is plain", async () => {
 		const plain = { ...settings, verseNumberStyle: "plain" } as PluginSettings;

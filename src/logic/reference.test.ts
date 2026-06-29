@@ -110,8 +110,17 @@ describe("parseReference — single-chapter parity", () => {
 		]);
 	});
 
-	it("rejects the not-yet-supported 'f' (end of section) suffix with a clear message", () => {
-		expect(() => parseReference("John 3:16f", settings)).toThrow(/not supported yet/);
+	it("parses a single 'f' suffix as a to-section-end range", () => {
+		expect(parseReference("John 3:16f", settings)).toEqual([
+			{ book: "John", chapter: 3, range: { startVerse: 16, endVerse: 16, toSectionEnd: true } },
+		]);
+	});
+
+	it("accepts the dashed, spaced, and uppercase 'f' forms identically", () => {
+		const expected = parseReference("John 3:16f", settings);
+		expect(parseReference("John 3:16-f", settings)).toEqual(expected);
+		expect(parseReference("John 3:16 f", settings)).toEqual(expected);
+		expect(parseReference("John 3:16F", settings)).toEqual(expected);
 	});
 
 	it("throws on malformed input instead of silently mis-parsing", () => {

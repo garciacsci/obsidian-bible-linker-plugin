@@ -59,6 +59,24 @@ export class SettingsTab extends PluginSettingTab {
                 })
             })
 
+        new Setting(containerEl)
+            .setName("Section heading level")
+            .setDesc('Heading level of section/pericope titles (e.g. "##"). If set, the "f" suffix ("16f") links to the end of the section. Leave as "none" to disable sections, making "f" behave like "ff" (end of chapter).')
+            .addDropdown((dropdown) => {
+                dropdown.addOption("none", "none")
+                dropdown.addOption("6", "######")
+                dropdown.addOption("5", "#####")
+                dropdown.addOption("4", "####")
+                dropdown.addOption("3", "###")
+                dropdown.addOption("2", "##")
+                dropdown.addOption("1", "#")
+                dropdown.setValue(this.plugin.settings.sectionHeadingLevel?.toString() ?? "none")
+                dropdown.onChange(async (value) => {
+                    this.plugin.settings.sectionHeadingLevel = value === "none" ? undefined : Number(value);
+                    await this.plugin.saveSettings();
+                })
+            })
+
         containerEl.createEl("h4", { text: "Inserted prefixes/postfixes" });
 
         new Setting(containerEl)

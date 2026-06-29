@@ -10,7 +10,7 @@
  */
 import type { PluginSettings } from "../main";
 import type { Reference } from "./reference";
-import type { VerseSource } from "./verse-source";
+import { sectionEndVerse, type VerseSource } from "./verse-source";
 import { LinkType } from "./link-type";
 import { capitalize } from "../utils/functions";
 import expandBibleBookName from "../utils/expandedBookName";
@@ -56,10 +56,9 @@ export async function buildLinks(
 				cited.push({ bookAndChapter: endStem, verse: v });
 			}
 		} else {
-			// An open-ended "ff" range runs to the chapter's last verse (count from the VerseSource).
-			const endVerse = range.toChapterEnd
-				? (await verseSource.getChapter(book, chapter, translation)).verses.length
-				: range.endVerse;
+			// An open-ended "ff"/"f" range resolves its end against the VerseSource: "ff" to the
+			// chapter's last verse, "f" to the end of the start verse's section.
+			const endVerse = await resolveEndVerse(range, book, chapter, verseSource, translation);
 			if (range.startVerse > endVerse) {
 				throw "Begin verse is bigger than end verse";
 			}
@@ -114,10 +113,9 @@ async function buildTitleStyleLinks(
 			}
 			span = `${range.startVerse}-${range.endChapter}:${endVerse}`;
 		} else {
-			// An open-ended "ff" range runs to the chapter's last verse (count from the VerseSource).
-			const endVerse = range.toChapterEnd
-				? (await verseSource.getChapter(book, chapter, translation)).verses.length
-				: range.endVerse;
+			// An open-ended "ff"/"f" range resolves its end against the VerseSource: "ff" to the
+			// chapter's last verse, "f" to the end of the start verse's section.
+			const endVerse = await resolveEndVerse(range, book, chapter, verseSource, translation);
 			if (range.startVerse > endVerse) {
 				throw "Begin verse is bigger than end verse";
 			}
@@ -147,6 +145,27 @@ async function buildTitleStyleLinks(
 		const invisible = rest.map((c) => `[[${target(c, settings)}|]]`).join("");
 		return visible + invisible;
 	});
+}
+
+/**
+ * Resolves a same-chapter range's end verse. A closed range keeps its own endVerse; an open-ended
+ * "ff" runs to the chapter's last verse and an "f" to the end of the start verse's section — both
+ * read from the VerseSource (never a hardcoded table). The chapter is only fetched when needed.
+ */
+async function resolveEndVerse(
+	range: Reference[number]["range"],
+	book: string,
+	chapter: number,
+	verseSource: VerseSource,
+	translation: string
+): Promise<number> {
+	if (!range.toChapterEnd && !range.toSectionEnd) {
+		return range.endVerse;
+	}
+	const resolved = await verseSource.getChapter(book, chapter, translation);
+	return range.toSectionEnd
+		? sectionEndVerse(resolved, range.startVerse)
+		: resolved.verses.length;
 }
 
 /** A cited verse's link target: the "Book Chapter" stem + separator + verse prefix + verse number. */

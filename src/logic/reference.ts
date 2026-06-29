@@ -8,12 +8,16 @@ import type { PluginSettings } from "../main";
  * The verse span inside a segment. May cross a chapter boundary (endChapter), never a book.
  * `toChapterEnd` marks an open-ended "ff" range ("16ff" — verse 16 and the following verses):
  * the builders resolve endVerse to the chapter's last verse, so endVerse here is just a placeholder.
+ * `toSectionEnd` marks a single "f" range ("16f" — to the end of the section): the builders resolve
+ * endVerse to the verse before the next section heading (else the chapter end), so endVerse is a
+ * placeholder here too. The two flags are mutually exclusive.
  */
 export type Range = {
 	startVerse: number;
 	endVerse: number;
 	endChapter?: number;
 	toChapterEnd?: boolean;
+	toSectionEnd?: boolean;
 };
 
 /** One contiguous, self-contained piece of a reference: book + chapter + verse range. */
@@ -52,8 +56,9 @@ function separatorRegexes(separators: string) {
 		// A bookless ";" segment, "3:15": a chapter switch that keeps the running book.
 		chapterSwitchRegEx: new RegExp(`^(\\d+)\\s*[${leadClass}]\\s*(.+)$`),
 		// A bare verse chunk: "10", "10-12" (range separators: - . =), a range whose end carries its
-		// own chapter, "27-2:2", or an open-ended "following" suffix, "10ff"/"10-ff" (and "10f", which
-		// is parsed but not yet supported). Groups: startVerse, fSuffix?, endChapter?, endVerse.
+		// own chapter, "27-2:2", or an open-ended "following" suffix — "10ff" (to chapter end) or
+		// "10f" (to section end), each also accepting the dashed/spaced form. Groups: startVerse,
+		// fSuffix?, endChapter?, endVerse.
 		verseChunkRegEx: new RegExp(
 			`^(\\d+)(?:\\s*[-.=]?\\s*([fF]{1,2})|\\s*[-.=]\\s*(?:(\\d+)\\s*[${chunkClass}]\\s*)?(\\d+))?$`
 		),
@@ -115,9 +120,15 @@ export function parseReference(input: string, settings: PluginSettings): Referen
 			const startVerse = Number(chunk[1]);
 			const fSuffix = chunk[2]?.toLowerCase();
 			if (fSuffix === "f") {
-				// "16f" (to the end of the section) needs section boundaries the bible files don't yet
-				// mark; only "ff" (to the end of the chapter) is supported for now.
-				throw "'f' (to the end of the section) is not supported yet — use 'ff' for the end of the chapter";
+				// "16f": verse 16 to the end of its section (the next "## " heading). endVerse is a
+				// placeholder; the builders resolve it from the chapter's section boundaries, falling
+				// back to the chapter end when no later section heading exists.
+				segments.push({
+					book,
+					chapter,
+					range: { startVerse, endVerse: startVerse, toSectionEnd: true },
+				});
+				continue;
 			}
 			if (fSuffix === "ff") {
 				// "16ff": verse 16 and the following verses, to the chapter's end. endVerse is a
