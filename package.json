@@ -1,6 +1,6 @@
 {
     "name": "robust-bible-linking",
-    "version": "2.1.1",
+    "version": "2.2.0",
     "description": "Obsidian bible linker plugin",
     "main": "main.js",
     "scripts": {
