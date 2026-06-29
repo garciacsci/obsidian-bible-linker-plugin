@@ -123,6 +123,31 @@ describe("buildLinks — multi-segment references", () => {
 	});
 });
 
+describe("buildLinks — open-ended 'ff' range", () => {
+	const chapters = {
+		"Gen 1": {
+			fileName: "Gen 1",
+			verses: Array.from({ length: 31 }, (_, i) => ({
+				number: i + 1,
+				text: `v${i + 1}`,
+				anchor: `${i + 1}`,
+			})),
+		} as Chapter,
+	};
+
+	it("runs from the start verse to the chapter's last verse", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 29, endVerse: 29, toChapterEnd: true } }];
+		const out = await buildLinks(ref, LinkType.Basic, settings, fakeSource(chapters), "/");
+		expect(out).toEqual(["[[Gen 1#29]]", "[[Gen 1#30]]", "[[Gen 1#31]]"]);
+	});
+
+	it("labels FirstAndLast across the resolved span (start verse to chapter end)", async () => {
+		const ref = [{ book: "Gen", chapter: 1, range: { startVerse: 29, endVerse: 29, toChapterEnd: true } }];
+		const out = await buildLinks(ref, LinkType.FirstAndLast, settings, fakeSource(chapters), "/");
+		expect(out).toEqual(["[[Gen 1#29|Genesis 1:29]]", "[[Gen 1#30|]]", "[[Gen 1#31|-31]]"]);
+	});
+});
+
 describe("buildLinks — cross-chapter range", () => {
 	// A 31-verse Gen 1 and a short Gen 2, so the enumeration must read each chapter's verse count.
 	const chapters = {

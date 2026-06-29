@@ -56,10 +56,14 @@ export async function buildLinks(
 				cited.push({ bookAndChapter: endStem, verse: v });
 			}
 		} else {
-			if (range.startVerse > range.endVerse) {
+			// An open-ended "ff" range runs to the chapter's last verse (count from the VerseSource).
+			const endVerse = range.toChapterEnd
+				? (await verseSource.getChapter(book, chapter, translation)).verses.length
+				: range.endVerse;
+			if (range.startVerse > endVerse) {
 				throw "Begin verse is bigger than end verse";
 			}
-			for (let v = range.startVerse; v <= range.endVerse; v++) {
+			for (let v = range.startVerse; v <= endVerse; v++) {
 				cited.push({ bookAndChapter: startStem, verse: v });
 			}
 		}
@@ -110,16 +114,20 @@ async function buildTitleStyleLinks(
 			}
 			span = `${range.startVerse}-${range.endChapter}:${endVerse}`;
 		} else {
-			if (range.startVerse > range.endVerse) {
+			// An open-ended "ff" range runs to the chapter's last verse (count from the VerseSource).
+			const endVerse = range.toChapterEnd
+				? (await verseSource.getChapter(book, chapter, translation)).verses.length
+				: range.endVerse;
+			if (range.startVerse > endVerse) {
 				throw "Begin verse is bigger than end verse";
 			}
-			for (let v = range.startVerse; v <= range.endVerse; v++) {
+			for (let v = range.startVerse; v <= endVerse; v++) {
 				cited.push({ bookAndChapter: startStem, verse: v });
 			}
 			span =
-				range.startVerse === range.endVerse
+				range.startVerse === endVerse
 					? `${range.startVerse}`
-					: `${range.startVerse}-${range.endVerse}`;
+					: `${range.startVerse}-${endVerse}`;
 		}
 
 		totalVerses += cited.length;

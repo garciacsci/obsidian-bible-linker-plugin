@@ -82,8 +82,11 @@ export async function buildQuote(
 			return { items, span: `${startVerse}-${range.endChapter}:${endVerse}` };
 		}
 
-		// An end verse past the chapter clamps to its last verse, matching the legacy Copy command.
-		const endVerse = Math.min(range.endVerse, start.verses.length);
+		// An open-ended "ff" range runs to the chapter's last verse; otherwise an end verse past the
+		// chapter clamps to its last verse, matching the legacy Copy command.
+		const endVerse = range.toChapterEnd
+			? start.verses.length
+			: Math.min(range.endVerse, start.verses.length);
 		for (let v = startVerse; v <= endVerse; v++) {
 			items.push(cite(start.fileName, start.verses[v - 1], verseMarker(v)));
 		}

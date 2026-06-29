@@ -4,8 +4,17 @@
  */
 import type { PluginSettings } from "../main";
 
-/** The verse span inside a segment. May cross a chapter boundary (endChapter), never a book. */
-export type Range = { startVerse: number; endVerse: number; endChapter?: number };
+/**
+ * The verse span inside a segment. May cross a chapter boundary (endChapter), never a book.
+ * `toChapterEnd` marks an open-ended "ff" range ("16ff" — verse 16 and the following verses):
+ * the builders resolve endVerse to the chapter's last verse, so endVerse here is just a placeholder.
+ */
+export type Range = {
+	startVerse: number;
+	endVerse: number;
+	endChapter?: number;
+	toChapterEnd?: boolean;
+};
 
 /** One contiguous, self-contained piece of a reference: book + chapter + verse range. */
 export type Segment = { book: string; chapter: number; range: Range };
@@ -42,9 +51,12 @@ function separatorRegexes(separators: string) {
 		leadingSeparatorRegEx: new RegExp(`^\\s*[${leadClass}]\\s*`),
 		// A bookless ";" segment, "3:15": a chapter switch that keeps the running book.
 		chapterSwitchRegEx: new RegExp(`^(\\d+)\\s*[${leadClass}]\\s*(.+)$`),
-		// A bare verse chunk: "10", "10-12" (range separators: - . =), or a range whose end
-		// carries its own chapter, "27-2:2" — groups: startVerse, endChapter?, endVerse.
-		verseChunkRegEx: new RegExp(`^(\\d+)(?:\\s*[-.=]\\s*(?:(\\d+)\\s*[${chunkClass}]\\s*)?(\\d+))?$`),
+		// A bare verse chunk: "10", "10-12" (range separators: - . =), a range whose end carries its
+		// own chapter, "27-2:2", or an open-ended "following" suffix, "10ff"/"10-ff" (and "10f", which
+		// is parsed but not yet supported). Groups: startVerse, fSuffix?, endChapter?, endVerse.
+		verseChunkRegEx: new RegExp(
+			`^(\\d+)(?:\\s*[-.=]?\\s*([fF]{1,2})|\\s*[-.=]\\s*(?:(\\d+)\\s*[${chunkClass}]\\s*)?(\\d+))?$`
+		),
 	};
 }
 
@@ -101,10 +113,26 @@ export function parseReference(input: string, settings: PluginSettings): Referen
 				throw "Could not parse user input";
 			}
 			const startVerse = Number(chunk[1]);
-			const endVerse = chunk[3] !== undefined ? Number(chunk[3]) : startVerse;
+			const fSuffix = chunk[2]?.toLowerCase();
+			if (fSuffix === "f") {
+				// "16f" (to the end of the section) needs section boundaries the bible files don't yet
+				// mark; only "ff" (to the end of the chapter) is supported for now.
+				throw "'f' (to the end of the section) is not supported yet — use 'ff' for the end of the chapter";
+			}
+			if (fSuffix === "ff") {
+				// "16ff": verse 16 and the following verses, to the chapter's end. endVerse is a
+				// placeholder; the builders resolve it against the chapter's verse count.
+				segments.push({
+					book,
+					chapter,
+					range: { startVerse, endVerse: startVerse, toChapterEnd: true },
+				});
+				continue;
+			}
+			const endVerse = chunk[4] !== undefined ? Number(chunk[4]) : startVerse;
 			const range: Range =
-				chunk[2] !== undefined
-					? { startVerse, endChapter: Number(chunk[2]), endVerse }
+				chunk[3] !== undefined
+					? { startVerse, endChapter: Number(chunk[3]), endVerse }
 					: { startVerse, endVerse };
 			segments.push({ book, chapter, range });
 		}

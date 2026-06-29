@@ -30,6 +30,17 @@ Copies given verses from your bible files and inserts obsidian links to them. Th
 ```
 Note that linking is done using "invisible" links after the verses (those links are visible only in source mode) - this can be turned off in the settings, but it is not recommended if you want to use the full power of Obsidian linking.
 
+### Reference syntax
+The reference box accepts:
+- A single verse: `John 3:16`
+- A range: `John 3:16-18`
+- Several chunks in one chapter: `John 3:1-3,16-18`
+- A range crossing a chapter boundary: `Gen 1:27-2:2`
+- Multiple references separated by `;`, each restating its book (`John 3:16; Rom 5:8`) or just switching chapter within the same book (`Heb 11:1-3; 12:1-6`)
+- An open-ended **`ff`** suffix — *"and the following verses"* — links from the start verse to the **end of the chapter**: `John 3:16ff` → `John 3:16-36`. The dashed and spaced forms (`16-ff`, `16 ff`) work too.
+
+> The single **`f`** suffix (*"and the following verse"*, i.e. to the end of the *section/pericope*) is not supported yet — it needs your bible files to mark section boundaries as headings.
+
 ### Pros of this approach
 - More verses can be displayed as one block of text, which is more visually pleasing than multiple link blocks after each other. 
 - You can edit the text if you want (for example add some in-line notes, bold important part...) without effecting the original.
