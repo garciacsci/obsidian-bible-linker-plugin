@@ -42,6 +42,8 @@ The reference box accepts:
 
 > The **`f`** suffix needs your bible files to mark section/pericope titles as headings. Set **`sectionHeadingLevel`** (e.g. `2` for `## ` titles) so the plugin knows which headings begin a new section. When it is unset — or the start verse is already in the chapter's last section — **`f`** falls back to the end of the chapter (identical to **`ff`**).
 
+> Some exports (Bible Gateway) do not write section titles as headings: they glue the title onto the end of the verse before it, with no space (`…eternal life.For God So Loved the World`). The plugin removes such a title from the copied verse text and treats it as the start of a section for **`f`**, with or without **`sectionHeadingLevel`**. It only does this when the title runs to the end of the verse and is in title case, so a verse that ends in a quoted word keeps all its text. A title glued into the middle of a verse is left as it is.
+
 ### Pros of this approach
 - More verses can be displayed as one block of text, which is more visually pleasing than multiple link blocks after each other. 
 - You can edit the text if you want (for example add some in-line notes, bold important part...) without effecting the original.
