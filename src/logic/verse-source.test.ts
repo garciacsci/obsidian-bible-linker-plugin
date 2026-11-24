@@ -3,6 +3,7 @@ import {
 	extractChapterVerses,
 	extractSectionStarts,
 	sectionEndVerse,
+	splitGluedHeading,
 	Chapter,
 	HeadingInfo,
 } from "./verse-source";
@@ -173,5 +174,134 @@ describe("sectionEndVerse — end of the section containing a verse", () => {
 
 	it("falls back to the chapter end when the chapter has no marked sections", () => {
 		expect(sectionEndVerse({ ...chapter, sectionStarts: [] }, 2)).toBe(5);
+	});
+});
+
+// The Bible Gateway export glues a section heading onto the end of the verse before it, with no
+// separator and no "## " line: "...eternal life.For God So Loved the World". Made-up text below
+// keeps that shape.
+describe("splitGluedHeading — section heading glued onto a verse", () => {
+	it("strips a heading glued after a full stop, keeping the trailing space", () => {
+		expect(splitGluedHeading("and the man went home.The Man Goes Home ")).toEqual({
+			text: "and the man went home. ",
+			heading: "The Man Goes Home",
+		});
+	});
+
+	it("strips a heading glued after a closing quote", () => {
+		expect(splitGluedHeading('he said, "Go in peace."A Gift for the Prophet ')).toEqual({
+			text: 'he said, "Go in peace." ',
+			heading: "A Gift for the Prophet",
+		});
+	});
+
+	it("strips a heading glued after a nested closing quote and the outer quote", () => {
+		expect(splitGluedHeading("\"he said, 'Come.' \"The Feast Begins")).toEqual({
+			text: "\"he said, 'Come.' \"",
+			heading: "The Feast Begins",
+		});
+	});
+
+	it("strips a heading after spaced nested closing quotes and italic marks", () => {
+		expect(splitGluedHeading("says the LORD.\" ' \"The Vision of the Lamp ").text).toBe(
+			"says the LORD.\" ' \" "
+		);
+		expect(splitGluedHeading("I am _He._\"The Second Sign ").text).toBe("I am _He._\" ");
+		expect(splitGluedHeading("'Peace _is given._'The People Return ").text).toBe(
+			"'Peace _is given._' "
+		);
+	});
+
+	it("strips a one-word heading and one ending in a question mark", () => {
+		expect(splitGluedHeading("grace be with you.Benediction ").text).toBe("grace be with you. ");
+		expect(splitGluedHeading("they were afraid.Who Is the Greatest? ").text).toBe("they were afraid. ");
+	});
+
+	it("keeps a bracket that opens the next verse", () => {
+		expect(splitGluedHeading("a later note.]The Woman at the Well [[ ").text).toBe("a later note.] [[ ");
+	});
+
+	it("leaves a verse that ends in a quoted capitalised word", () => {
+		for (const text of [
+			'and he called the place "Bethel" ',
+			'and he named him "Peleg." ',
+			'and they cried out, "Hosanna ',
+			"in the LORD'S House ",
+			'"They are many!" "Silence!" ',
+		]) {
+			expect(splitGluedHeading(text)).toEqual({ text });
+		}
+	});
+
+	it("leaves glued text that is not in title case", () => {
+		for (const text of [
+			"blessed be the man.' \"And all the people shall say, 'Amen!'",
+			"let its spices flow.Together in the Garden Let my beloved come",
+			"and he was buried.David Rose and went down to the city",
+		]) {
+			expect(splitGluedHeading(text)).toEqual({ text });
+		}
+	});
+});
+
+describe("glued section headings in a chapter file", () => {
+	// Gen 1 as the export writes it: no "## " lines, the section titles glued onto verses 2 and 3.
+	const lines = [
+		"# Gen 1",
+		"###### 1 ",
+		"In the beginning. ",
+		"",
+		"###### 2 ",
+		"And it was so.The Second Day ",
+		"",
+		"###### 3 ",
+		"the first line, ",
+		"and the second line.The Third Day ",
+		"",
+		"###### 4 ",
+		"And it was good.The Next Chapter ",
+	];
+	const headings: HeadingInfo[] = [
+		{ heading: "Gen 1", level: 1, line: 0 },
+		{ heading: "1", level: 6, line: 1 },
+		{ heading: "2", level: 6, line: 4 },
+		{ heading: "3", level: 6, line: 7 },
+		{ heading: "4", level: 6, line: 11 },
+	];
+	const options = { verseHeadingLevel: 6, verseOffset: -1 };
+
+	it("copies the verse text without the glued heading", () => {
+		expect(extractChapterVerses(lines, headings, options).map((verse) => verse.text)).toEqual([
+			"In the beginning. ",
+			"And it was so. ",
+			"the first line, \nand the second line. ",
+			"And it was good. ",
+		]);
+	});
+
+	it("starts a section at the verse after a glued heading, without a section heading level", () => {
+		// The heading after the last verse (4) opens the next chapter, so it adds no start here.
+		expect(extractSectionStarts(headings, options, lines)).toEqual([3, 4]);
+	});
+
+	it("merges glued section starts with section headings", () => {
+		const withSection = [...lines, "## Real Section", "###### 5 ", "verse five "];
+		const moreHeadings: HeadingInfo[] = [
+			...headings,
+			{ heading: "Real Section", level: 2, line: 13 },
+			{ heading: "5", level: 6, line: 14 },
+		];
+		expect(
+			extractSectionStarts(moreHeadings, { ...options, sectionHeadingLevel: 2 }, withSection)
+		).toEqual([3, 4, 5]);
+	});
+
+	it("lets \"f\" stop at the verse before the glued heading's section", () => {
+		const chapter: Chapter = {
+			fileName: "Gen 1",
+			verses: extractChapterVerses(lines, headings, options),
+			sectionStarts: extractSectionStarts(headings, options, lines),
+		};
+		expect(sectionEndVerse(chapter, 1)).toBe(2);
 	});
 });

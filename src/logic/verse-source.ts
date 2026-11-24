@@ -45,6 +45,8 @@ export type ExtractOptions = {
  * headings are first filtered to the verse heading level, then verse number `v` maps to
  * heading index `v + verseOffset` (index 0 being the chapter title when verseOffset is 0).
  *
+ * A section heading glued onto the end of a verse (see splitGluedHeading) is removed from its text.
+ *
  * @returns Verses keyed by their real (display) number; text is the verse's content lines
  *          joined with "\n", leaving line/space formatting to the caller.
  */
@@ -65,7 +67,7 @@ export function extractChapterVerses(
 		verses.push({
 			number,
 			anchor: verseHeadings[index].heading,
-			text: extractVerseText(index, verseHeadings, lines),
+			text: splitGluedHeading(extractVerseText(index, verseHeadings, lines)).text,
 		});
 	}
 	return verses;
@@ -74,35 +76,53 @@ export function extractChapterVerses(
 /**
  * Finds the verse numbers at which a section begins — one per section heading (a heading at
  * `sectionHeadingLevel`), namely the number of the first verse that follows it. Assumes the verse
- * headings are filtered out by `verseHeadingLevel` so section headings are distinguishable; returns
- * an empty list when no section level is configured.
+ * headings are filtered out by `verseHeadingLevel` so section headings are distinguishable.
+ *
+ * When the chapter's `lines` are given, a section heading glued onto the end of a verse (see
+ * splitGluedHeading) also starts a section at the next verse, whether or not a section level is
+ * configured. The result is sorted and has no duplicates; it is empty when neither source marks a
+ * section.
  *
  * Uses the same verse↔heading mapping as extractChapterVerses (verse `n` lives at heading index
  * `n + verseOffset`), inverted to turn a heading index back into its verse number.
  */
-export function extractSectionStarts(headings: HeadingInfo[], options: ExtractOptions): number[] {
+export function extractSectionStarts(
+	headings: HeadingInfo[],
+	options: ExtractOptions,
+	lines?: string[]
+): number[] {
 	const { verseHeadingLevel, verseOffset, sectionHeadingLevel } = options;
-	if (!sectionHeadingLevel) {
-		return [];
-	}
 	const verseHeadings = headings.filter(
 		(heading) => !verseHeadingLevel || heading.level === verseHeadingLevel
 	);
 	const nrOfVerses = verseHeadings.length - 1 - verseOffset;
 
-	const starts: number[] = [];
-	for (const heading of headings) {
-		if (heading.level !== sectionHeadingLevel) {
-			continue;
-		}
-		// The section introduces the first verse heading that comes after it.
-		const index = verseHeadings.findIndex((verse) => verse.line > heading.line);
-		const number = index - verseOffset;
-		if (index !== -1 && number >= 1 && number <= nrOfVerses) {
-			starts.push(number);
+	const starts = new Set<number>();
+	if (sectionHeadingLevel) {
+		for (const heading of headings) {
+			if (heading.level !== sectionHeadingLevel) {
+				continue;
+			}
+			// The section introduces the first verse heading that comes after it.
+			const index = verseHeadings.findIndex((verse) => verse.line > heading.line);
+			const number = index - verseOffset;
+			if (index !== -1 && number >= 1 && number <= nrOfVerses) {
+				starts.add(number);
+			}
 		}
 	}
-	return starts;
+
+	// A heading glued onto the end of verse n starts a section at verse n + 1. One glued onto the
+	// chapter's last verse opens the next chapter, so it adds nothing here.
+	if (lines) {
+		for (let number = 1; number < nrOfVerses; number++) {
+			const text = extractVerseText(number + verseOffset, verseHeadings, lines);
+			if (splitGluedHeading(text).heading !== undefined) {
+				starts.add(number + 1);
+			}
+		}
+	}
+	return [...starts].sort((a, b) => a - b);
 }
 
 /**
@@ -141,4 +161,62 @@ function extractVerseText(headingIndex: number, headings: HeadingInfo[], lines: 
 		}
 	}
 	return output;
+}
+
+/*
+ * Glued section headings. The Bible Gateway export writes a section heading onto the end of the
+ * verse before it, with no separator and no heading line: "...eternal life.For God So Loved the
+ * World". Real verse text never puts a capital letter directly after closing punctuation, so that
+ * join is the signal. The detector is conservative: the glued text must run to the end of the
+ * verse's last line and be in title case, or the verse is left as it is.
+ */
+
+// Where verse text ends and a heading begins: closing punctuation, then any closing quotes,
+// brackets or italic marks ("_"), then the heading's capital letter with no space. NKJV spaces
+// its nested closing quotes (`.' "` or `." ' "`), so a space is allowed between two quotes, but
+// never straight after the punctuation: `, "Hosanna` is an opening quote, not a heading.
+// Also ")" or "]" straight after a word.
+const GLUE = /(?:[.?!;:,](?:[)\]"'’”_]|(?<=["'’”]) (?=["'’”]))*|[a-z][)\]]+)(?=["“]?[A-Z])/g;
+
+// The heading itself, to the end of the line: words, digits and heading punctuation, an optional
+// final "?" or "!", and an optional " [" / " [[" that opens a bracketed passage in the next verse.
+const HEADING = /^(["“]?[A-Z][A-Za-z0-9’'\-–—,:;()"“” ]*?[?!]?["”]?)( \[\[?)?(\s*)$/;
+
+// Words a title-case heading may leave in lower case.
+const MINOR_WORDS = new Set(
+	(
+		"a an the and but or nor for of in on at to by with from into upon as over than under after " +
+		"before through about against among between without like concerning off out up down so yet"
+	).split(" ")
+);
+
+function isTitleCase(heading: string): boolean {
+	return heading.split(/\s+/).every((raw) => {
+		const word = raw.replace(/^["“”(),:;?!]+|["“”(),:;?!]+$/g, "");
+		return !word || /^[A-Z0-9]/.test(word) || MINOR_WORDS.has(word.toLowerCase());
+	});
+}
+
+/**
+ * Splits a section heading glued onto the end of a verse's text off that text. Only the last line
+ * is examined. Returns the text unchanged, with no `heading`, when no glued heading is found.
+ * Whitespace after the heading, and a " [[" that belongs to the next verse, stay in the text.
+ */
+export function splitGluedHeading(text: string): { text: string; heading?: string } {
+	const lastLineStart = text.lastIndexOf("\n") + 1;
+	const lastLine = text.slice(lastLineStart);
+	for (const glue of lastLine.matchAll(GLUE)) {
+		const end = (glue.index ?? 0) + glue[0].length;
+		const match = HEADING.exec(lastLine.slice(end));
+		// After spaced quotes, a closing quote may be followed by a new quotation, not a heading
+		// ("So many!" "Silence!"), so a heading there must not itself end like speech.
+		const afterSpacedQuotes = glue[0].includes(" ");
+		if (match && isTitleCase(match[1]) && !(afterSpacedQuotes && /[?!"“”]/.test(match[1]))) {
+			return {
+				text: text.slice(0, lastLineStart + end) + (match[2] ?? "") + match[3],
+				heading: match[1],
+			};
+		}
+	}
+	return { text };
 }

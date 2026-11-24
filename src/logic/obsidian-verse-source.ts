@@ -41,7 +41,7 @@ export class ObsidianVerseSource implements VerseSource {
 			sectionHeadingLevel: this.settings.sectionHeadingLevel,
 		};
 		const verses = extractChapterVerses(lines, headings, options);
-		const sectionStarts = extractSectionStarts(headings, options);
+		const sectionStarts = extractSectionStarts(headings, options, lines);
 		return { fileName, verses, sectionStarts };
 	}
 }
